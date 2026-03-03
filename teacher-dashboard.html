@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard - Smart Attendance System</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <img src="" alt="Profile" class="profile-image" id="profileImage">
+                <h3 id="teacherName">Loading...</h3>
+                <p id="teacherDepartment"></p>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="active" onclick="showSection('overview')">
+                    <i class="fas fa-home"></i> Overview
+                </a>
+                <a href="#" onclick="showSection('attendance')">
+                    <i class="fas fa-calendar-check"></i> Attendance
+                </a>
+                <a href="#" onclick="showSection('students')">
+                    <i class="fas fa-users"></i> Students
+                </a>
+                <a href="#" onclick="showSection('reports')">
+                    <i class="fas fa-chart-bar"></i> Reports
+                </a>
+                <a href="#" onclick="showSection('approvals')" id="approvalsLink">
+                    <i class="fas fa-user-clock"></i> Pending Approvals
+                    <span class="badge" id="pendingCount">0</span>
+                </a>
+                <a href="#" onclick="showSection('settings')">
+                    <i class="fas fa-cog"></i> Settings
+                </a>
+                <a href="#" onclick="logout()">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <h2 id="pageTitle">Overview</h2>
+                <div class="top-bar-actions">
+                    <button class="btn btn-outline" onclick="toggleDarkMode()">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Overview Section -->
+            <div id="overviewSection" class="section active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Total Students</h3>
+                            <span class="stat-number" id="totalStudents">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-calendar-check"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Today's Attendance</h3>
+                            <span class="stat-number" id="todayAttendance">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Average Attendance</h3>
+                            <span class="stat-number" id="avgAttendance">0%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Active Sessions</h3>
+                            <span class="stat-number" id="activeSessions">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QR Code Section -->
+                <div class="qr-section glass-effect">
+                    <h3>Start Attendance Session</h3>
+                    <div class="qr-controls">
+                        <button class="btn btn-primary btn-large" onclick="startAttendance()">
+                            <i class="fas fa-play"></i> Start Attendance
+                        </button>
+                        <button class="btn btn-danger btn-large" onclick="stopAttendance()" disabled id="stopBtn">
+                            <i class="fas fa-stop"></i> Stop Attendance
+                        </button>
+                    </div>
+                    
+                    <div id="qrContainer" class="qr-container hidden">
+                        <div id="qrcode"></div>
+                        <p class="qr-timer">QR expires in: <span id="qrTimer">5:00</span></p>
+                        <p class="qr-info">Session ID: <span id="sessionId"></span></p>
+                        <p class="qr-info">Students marked: <span id="markedCount">0</span></p>
+                    </div>
+                </div>
+
+                <!-- Monthly Attendance Chart -->
+                <div class="chart-container glass-effect">
+                    <h3>Monthly Attendance Overview</h3>
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="attendanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attendance Section -->
+            <div id="attendanceSection" class="section">
+                <h3>Attendance Records</h3>
+                <div class="table-container">
+                    <table id="attendanceTable">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Session</th>
+                                <th>Total Students</th>
+                                <th>Present</th>
+                                <th>Absent</th>
+                                <th>Percentage</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceTableBody">
+                            <!-- Filled dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Students Section -->
+            <div id="studentsSection" class="section">
+                <h3>Student Management</h3>
+                <div class="filters">
+                    <select id="sectionFilter" onchange="filterStudents()">
+                        <option value="">All Sections</option>
+                    </select>
+                    <input type="text" id="searchStudent" placeholder="Search student..." onkeyup="filterStudents()">
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Roll No</th>
+                                <th>Name</th>
+                                <th>Section</th>
+                                <th>Attendance %</th>
+                                <th>Last Attendance</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentsTableBody">
+                            <!-- Filled dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Reports Section -->
+            <div id="reportsSection" class="section">
+                <h3>Attendance Reports</h3>
+                <div class="reports-controls">
+                    <select id="reportMonth">
+                        <option value="1">January</option>
+                        <option value="2">February</option>
+                        <option value="3">March</option>
+                        <option value="4">April</option>
+                        <option value="5">May</option>
+                        <option value="6">June</option>
+                        <option value="7">July</option>
+                        <option value="8">August</option>
+                        <option value="9">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                    </select>
+                    <select id="reportSection">
+                        <option value="">All Sections</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="generateReport()">
+                        <i class="fas fa-file-pdf"></i> Generate Report
+                    </button>
+                    <button class="btn btn-success" onclick="downloadCSV()">
+                        <i class="fas fa-download"></i> Download CSV
+                    </button>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="reportChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Approvals Section -->
+            <div id="approvalsSection" class="section">
+                <h3>Pending Teacher Approvals</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Employee ID</th>
+                                <th>Department</th>
+                                <th>Email</th>
+                                <th>Requested On</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="approvalsTableBody">
+                            <!-- Filled dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+            <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+    
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    
+    <!-- Your JS files -->
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/qr-scanner.js"></script>
+    <script src="js/teacher.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

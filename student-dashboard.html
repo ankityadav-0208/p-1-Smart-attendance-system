@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - Smart Attendance System</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <img src="" alt="Profile" class="profile-image" id="profileImage">
+                <h3 id="studentName">Loading...</h3>
+                <p id="studentInfo"></p>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="active" onclick="showSection('overview')">
+                    <i class="fas fa-home"></i> Overview
+                </a>
+                <a href="#" onclick="showSection('history')">
+                    <i class="fas fa-history"></i> Attendance History
+                </a>
+                <a href="#" onclick="showSection('analytics')">
+                    <i class="fas fa-chart-line"></i> Analytics
+                </a>
+                <a href="#" onclick="showSection('profile')">
+                    <i class="fas fa-user"></i> Profile
+                </a>
+                <a href="#" onclick="logout()">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <h2 id="pageTitle">Overview</h2>
+                <div class="top-bar-actions">
+                    <button class="btn btn-primary" onclick="scanQR()">
+                        <i class="fas fa-qrcode"></i> Scan QR
+                    </button>
+                    <button class="btn btn-outline" onclick="toggleDarkMode()">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Overview Section -->
+            <div id="overviewSection" class="section active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-calendar-check"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Attendance Percentage</h3>
+                            <span class="stat-number" id="attendancePercentage">0%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Classes Attended</h3>
+                            <span class="stat-number" id="classesAttended">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-book"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Total Classes</h3>
+                            <span class="stat-number" id="totalClasses">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-trophy"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Rank</h3>
+                            <span class="stat-number" id="studentRank">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Monthly Chart -->
+                <div class="chart-container glass-effect">
+                    <h3>Your Monthly Attendance</h3>
+                    <canvas id="studentChart"></canvas>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="recent-activity glass-effect">
+                    <h3>Recent Attendance</h3>
+                    <div class="table-container">
+                        <table id="recentAttendance">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th>Session</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentAttendanceBody">
+                                <!-- Filled dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Section -->
+            <div id="historySection" class="section">
+                <h3>Complete Attendance History</h3>
+                <div class="filters">
+                    <select id="monthFilter" onchange="filterHistory()">
+                        <option value="">All Months</option>
+                        <option value="1">January</option>
+                        <option value="2">February</option>
+                        <option value="3">March</option>
+                        <option value="4">April</option>
+                        <option value="5">May</option>
+                        <option value="6">June</option>
+                        <option value="7">July</option>
+                        <option value="8">August</option>
+                        <option value="9">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                    </select>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Session ID</th>
+                                <th>Location</th>
+                                <th>Selfie</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <!-- Filled dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Analytics Section -->
+            <div id="analyticsSection" class="section">
+                <h3>Attendance Analytics</h3>
+                
+                <div class="analytics-grid">
+                    <div class="analytics-card glass-effect">
+                        <h4>Weekly Pattern</h4>
+                        <canvas id="weeklyChart"></canvas>
+                    </div>
+                    
+                    <div class="analytics-card glass-effect">
+                        <h4>Monthly Comparison</h4>
+                        <canvas id="monthlyComparisonChart"></canvas>
+                    </div>
+                    
+                    <div class="analytics-card glass-effect">
+                        <h4>Subject-wise Attendance</h4>
+                        <canvas id="subjectChart"></canvas>
+                    </div>
+                    
+                    <div class="analytics-card glass-effect">
+                        <h4>Attendance Summary</h4>
+                        <div class="summary-stats">
+                            <div class="summary-item">
+                                <span class="label">Present:</span>
+                                <span class="value" id="presentCount">0</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="label">Absent:</span>
+                                <span class="value" id="absentCount">0</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="label">Percentage:</span>
+                                <span class="value" id="totalPercentage">0%</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="label">Required to maintain 75%:</span>
+                                <span class="value" id="requiredAttendance">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Section -->
+            <div id="profileSection" class="section">
+                <div class="profile-card glass-effect">
+                    <div class="profile-header">
+                        <img src="" alt="Profile" id="profilePhoto" class="profile-large">
+                        <h2 id="profileName"></h2>
+                        <p id="profileRole"></p>
+                    </div>
+                    
+                    <div class="profile-details">
+                        <div class="detail-row">
+                            <label>Roll Number:</label>
+                            <span id="profileRoll"></span>
+                        </div>
+                        <div class="detail-row">
+                            <label>Section:</label>
+                            <span id="profileSection"></span>
+                        </div>
+                        <div class="detail-row">
+                            <label>Email:</label>
+                            <span id="profileEmail"></span>
+                        </div>
+                        <div class="detail-row">
+                            <label>Device ID:</label>
+                            <span id="profileDeviceId"></span>
+                        </div>
+                        <div class="detail-row">
+                            <label>Member Since:</label>
+                            <span id="profileJoined"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-actions">
+                        <button class="btn btn-primary" onclick="updatePhoto()">
+                            <i class="fas fa-camera"></i> Update Photo
+                        </button>
+                        <button class="btn btn-outline" onclick="changePassword()">
+                            <i class="fas fa-key"></i> Change Password
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Scanner Modal -->
+    <div id="qrScannerModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeQRScanner()">&times;</span>
+            <h3>Scan Attendance QR</h3>
+            <div class="qr-scanner-container">
+                <video id="qrVideo" class="qr-video" autoplay playsinline></video>
+                <canvas id="qrCanvas" style="display:none;"></canvas>
+                <div id="qrResult" class="qr-result"></div>
+                <button class="btn btn-primary btn-full" onclick="startQRScanner()">
+                    <i class="fas fa-camera"></i> Start Camera
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Selfie Capture Modal -->
+    <div id="selfieModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeSelfieModal()">&times;</span>
+            <h3>Capture Selfie</h3>
+            <div class="selfie-container">
+                <video id="selfieVideo" class="selfie-video" autoplay playsinline></video>
+                <canvas id="selfieCanvas" style="display:none;"></canvas>
+                <img id="selfiePreview" class="selfie-preview hidden">
+                <div class="selfie-controls">
+                    <button class="btn btn-primary" onclick="captureSelfie()">
+                        <i class="fas fa-camera"></i> Capture
+                    </button>
+                    <button class="btn btn-success" onclick="submitAttendance()" id="submitAttendanceBtn" disabled>
+                        <i class="fas fa-check"></i> Submit
+                    </button>
+                    <button class="btn btn-outline" onclick="retakeSelfie()" id="retakeBtn" style="display:none;">
+                        <i class="fas fa-redo"></i> Retake
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+            <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+    
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    
+    <!-- Your JS files -->
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/qr-scanner.js"></script>
+    <script src="js/student.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

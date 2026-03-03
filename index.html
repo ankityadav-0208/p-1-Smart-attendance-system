@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Attendance System - University Edition</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="landing-page">
+        <!-- Navigation -->
+        <nav class="navbar glass-effect">
+            <div class="nav-container">
+                <div class="logo">
+                    <i class="fas fa-university"></i>
+                    <span>SmartAttendance</span>
+                </div>
+                <div class="nav-links">
+                    <a href="#features">Features</a>
+                    <a href="#how-it-works">How it Works</a>
+                    <a href="#contact">Contact</a>
+                </div>
+                <div class="nav-buttons">
+                    <button class="btn btn-outline" onclick="showLoginModal('teacher')">
+                        <i class="fas fa-chalkboard-teacher"></i> Teacher
+                    </button>
+                    <button class="btn btn-outline" onclick="showLoginModal('student')">
+                        <i class="fas fa-user-graduate"></i> Student
+                    </button>
+                    <button class="btn btn-primary" onclick="showRegisterModal()">
+                        <i class="fas fa-user-plus"></i> Register
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-overlay"></div>
+            <div class="hero-content">
+                <h1 class="animate-text">Smart Attendance Management System</h1>
+                <p class="animate-text-delay">Eliminate Proxy Attendance with Advanced Verification Technology</p>
+                
+                <div class="hero-features">
+                    <div class="feature-badge glass-effect">
+                        <i class="fas fa-qrcode"></i>
+                        <span>Dynamic QR</span>
+                    </div>
+                    <div class="feature-badge glass-effect">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>Geo-Location</span>
+                    </div>
+                    <div class="feature-badge glass-effect">
+                        <i class="fas fa-camera"></i>
+                        <span>Face Capture</span>
+                    </div>
+                    <div class="feature-badge glass-effect">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Real-time Reports</span>
+                    </div>
+                    <div class="feature-badge glass-effect">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Anti-Proxy</span>
+                    </div>
+                </div>
+
+                <div class="hero-cta">
+                    <button class="btn btn-primary btn-large" onclick="showRegisterModal()">
+                        Get Started <i class="fas fa-arrow-right"></i>
+                    </button>
+                    <button class="btn btn-outline-light btn-large" onclick="scrollToFeatures()">
+                        Learn More
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section id="features" class="features">
+            <h2 class="section-title">Why Choose Our System?</h2>
+            <div class="features-grid">
+                <div class="feature-card glass-effect">
+                    <div class="feature-icon">
+                        <i class="fas fa-qrcode"></i>
+                    </div>
+                    <h3>Dynamic QR Codes</h3>
+                    <p>QR codes refresh every 10 seconds to prevent sharing and reuse</p>
+                </div>
+
+                <div class="feature-card glass-effect">
+                    <div class="feature-icon">
+                        <i class="fas fa-map-marked-alt"></i>
+                    </div>
+                    <h3>Location Verification</h3>
+                    <p>Students must be within 50 meters of the classroom to mark attendance</p>
+                </div>
+
+                <div class="feature-card glass-effect">
+                    <div class="feature-icon">
+                        <i class="fas fa-camera-retro"></i>
+                    </div>
+                    <h3>Auto Selfie Capture</h3>
+                    <p>Automatic face capture during attendance marking</p>
+                </div>
+
+                <div class="feature-card glass-effect">
+                    <div class="feature-icon">
+                        <i class="fas fa-fingerprint"></i>
+                    </div>
+                    <h3>Device Binding</h3>
+                    <p>Students are tied to their registered devices</p>
+                </div>
+
+                <div class="feature-card glass-effect">
+                    <div class="feature-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h3>Time Restrictions</h3>
+                    <p>Sessions expire after 5 minutes for security</p>
+                </div>
+
+                <div class="feature-card glass-effect">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                    <h3>Analytics Dashboard</h3>
+                    <p>Comprehensive attendance reports with graphs</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works -->
+        <section id="how-it-works" class="how-it-works">
+            <h2 class="section-title">How It Works</h2>
+            <div class="steps-container">
+                <div class="step glass-effect">
+                    <div class="step-number">1</div>
+                    <h3>Teacher Starts Session</h3>
+                    <p>Teacher generates a dynamic QR code that refreshes every 10 seconds</p>
+                </div>
+                <div class="step glass-effect">
+                    <div class="step-number">2</div>
+                    <h3>Student Scans QR</h3>
+                    <p>Student uses their device camera to scan the QR code</p>
+                </div>
+                <div class="step glass-effect">
+                    <div class="step-number">3</div>
+                    <h3>Verification</h3>
+                    <p>System verifies location, time, and captures a selfie</p>
+                </div>
+                <div class="step glass-effect">
+                    <div class="step-number">4</div>
+                    <h3>Attendance Marked</h3>
+                    <p>Attendance is recorded with all verification proofs</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Modals -->
+        <div id="loginModal" class="modal">
+            <div class="modal-content glass-effect">
+                <span class="close">&times;</span>
+                <h2 id="modalTitle">Login</h2>
+                <form id="loginForm" onsubmit="handleLoginSubmit(event)">
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full">Login</button>
+                </form>
+                <p class="text-center">Don't have an account? <a href="#" onclick="switchToRegister()">Register</a></p>
+            </div>
+        </div>
+
+        <div id="registerModal" class="modal">
+            <div class="modal-content glass-effect modal-large">
+                <span class="close">&times;</span>
+                <h2>Register</h2>
+                
+                <!-- Role Selection -->
+                <div class="role-selector">
+                    <button class="role-btn active" onclick="selectRole('student')">
+                        <i class="fas fa-user-graduate"></i> Student
+                    </button>
+                    <button class="role-btn" onclick="selectRole('teacher')">
+                        <i class="fas fa-chalkboard-teacher"></i> Teacher
+                    </button>
+                </div>
+
+                <!-- Student Registration Form -->
+                <form id="studentRegisterForm" class="register-form active">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="studentName">Full Name</label>
+                            <input type="text" id="studentName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="studentRoll">Roll Number</label>
+                            <input type="text" id="studentRoll" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="studentSection">Section</label>
+                            <input type="text" id="studentSection" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="studentEmail">Email</label>
+                            <input type="email" id="studentEmail" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="studentPassword">Password</label>
+                            <input type="password" id="studentPassword" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="studentConfirmPassword">Confirm Password</label>
+                            <input type="password" id="studentConfirmPassword" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="studentPhoto">Profile Photo</label>
+                        <input type="file" id="studentPhoto" accept="image/*" capture="environment">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-full">Register as Student</button>
+                </form>
+
+                <!-- Teacher Registration Form -->
+                <form id="teacherRegisterForm" class="register-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="teacherName">Full Name</label>
+                            <input type="text" id="teacherName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="teacherEmail">Official Email</label>
+                            <input type="email" id="teacherEmail" placeholder="@university.edu" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="teacherEmployeeId">Employee ID</label>
+                            <input type="text" id="teacherEmployeeId" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="teacherDepartment">Department</label>
+                            <select id="teacherDepartment" required>
+                                <option value="">Select Department</option>
+                                <option value="Computer Science">Computer Science</option>
+                                <option value="Engineering">Engineering</option>
+                                <option value="Mathematics">Mathematics</option>
+                                <option value="Physics">Physics</option>
+                                <option value="Chemistry">Chemistry</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="teacherCode">Teacher Verification Code</label>
+                        <input type="text" id="teacherCode" placeholder="Enter secret code" required>
+                        <small class="form-text">Contact administration for the verification code</small>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="teacherPassword">Password</label>
+                            <input type="password" id="teacherPassword" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="teacherConfirmPassword">Confirm Password</label>
+                            <input type="password" id="teacherConfirmPassword" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="teacherPhoto">Profile Photo</label>
+                        <input type="file" id="teacherPhoto" accept="image/*">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-full">Register as Teacher</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

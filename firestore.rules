@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isStudent() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student';
+    }
+    
+    function isTeacher() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && 
+        (isOwner(userId) || isAdmin()) &&
+        (!('role' in request.resource.data) || isAdmin());
+      allow delete: if isAdmin();
+    }
+    
+    // Teacher approvals collection
+    match /teacher_approvals/{approvalId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == approvalId;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // Attendance sessions collection
+    match /attendance_sessions/{sessionId} {
+      allow read: if isAuthenticated();
+      allow create: if isTeacher();
+      allow update: if isTeacher() && 
+        resource.data.createdBy == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+    
+    // Attendance records collection
+    match /attendance_records/{recordId} {
+      allow read: if isAuthenticated();
+      allow create: if isStudent() && 
+        request.resource.data.studentId == request.auth.uid;
+      allow update: if isTeacher() || isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // Teacher codes collection
+    match /teacher_codes/{codeId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+}
