@@ -203,7 +203,15 @@ function closeModals() {
 // Show toast notification
 function showToast(message, type = 'info') {
     const container = document.getElementById('toastContainer');
-    if (!container) return;
+    if (!container) {
+        // Create container if it doesn't exist
+        const newContainer = document.createElement('div');
+        newContainer.id = 'toastContainer';
+        newContainer.className = 'toast-container';
+        document.body.appendChild(newContainer);
+    }
+    
+    const toastContainer = document.getElementById('toastContainer');
     
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
@@ -218,13 +226,15 @@ function showToast(message, type = 'info') {
         <span>${message}</span>
     `;
     
-    container.appendChild(toast);
+    toastContainer.appendChild(toast);
     
     // Remove after 3 seconds
     setTimeout(() => {
         toast.style.animation = 'slideOut 0.3s ease';
         setTimeout(() => {
-            container.removeChild(toast);
+            if (toastContainer.contains(toast)) {
+                toastContainer.removeChild(toast);
+            }
         }, 300);
     }, 3000);
 }

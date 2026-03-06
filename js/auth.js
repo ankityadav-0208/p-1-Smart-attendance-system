@@ -39,8 +39,8 @@ auth.onAuthStateChanged(async (user) => {
                             window.location.href = 'teacher-dashboard.html';
                             break;
                         case 'admin':
-                            console.log('Admin user, redirecting to teacher dashboard');
-                            window.location.href = 'teacher-dashboard.html';
+                            console.log('Redirecting to admin dashboard');
+                            window.location.href = 'admin-dashboard.html';
                             break;
                         case 'pending_teacher':
                             console.log('Redirecting to pending approval');
@@ -111,10 +111,11 @@ async function login(email, password) {
     }
 }
 
-// Student Registration
+// Student Registration - Ultra Simple Version
 async function registerStudent(userData) {
     try {
         showLoading();
+        console.log('Starting registration for:', userData.email);
         
         // Create authentication user
         const userCredential = await auth.createUserWithEmailAndPassword(
@@ -122,54 +123,55 @@ async function registerStudent(userData) {
             userData.password
         );
         
+        console.log('User created in Auth:', userCredential.user.uid);
+        
         // Get device ID
         const deviceId = await getDeviceId();
         
-        // Upload profile photo
-        let photoURL = '';
-        if (userData.photo) {
-            photoURL = await uploadProfilePhoto(userCredential.user.uid, userData.photo);
-        }
-        
-        // Store user data in Firestore
-        await db.collection('users').doc(userCredential.user.uid).set({
+        // Simple user data
+        const userDocData = {
             name: userData.name,
             roll: userData.roll,
             section: userData.section,
             email: userData.email,
             role: 'student',
             deviceId: deviceId,
-            profilePhotoURL: photoURL,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+            profilePhotoURL: '',
+            createdAt: new Date().toISOString() // Simple timestamp
+        };
         
+        console.log('Saving to Firestore:', userDocData);
+        
+        // Save to Firestore
+        await db.collection('users').doc(userCredential.user.uid).set(userDocData);
+        
+        console.log('Firestore save complete');
         showToast('Registration successful!', 'success');
+        
+        closeModals();
+        
+        // Redirect
+        setTimeout(() => {
+            window.location.href = 'student-dashboard.html';
+        }, 1500);
+        
         return userCredential.user;
         
     } catch (error) {
         console.error('Registration error:', error);
-        let errorMessage = 'Registration failed. Please try again.';
+        console.error('Error code:', error.code);
+        console.error('Error message:', error.message);
         
-        switch(error.code) {
-            case 'auth/email-already-in-use':
-                errorMessage = 'Email already in use.';
-                break;
-            case 'auth/weak-password':
-                errorMessage = 'Password should be at least 6 characters.';
-                break;
-            case 'auth/invalid-email':
-                errorMessage = 'Invalid email address.';
-                break;
-        }
-        
-        showToast(errorMessage, 'error');
+        // Show the actual error
+        showToast('Error: ' + error.message, 'error');
         throw error;
     } finally {
         hideLoading();
     }
 }
 
-// Teacher Registration
+// Teacher Registration - COMPLETELY FIXED VERSION
+// In your auth.js, replace the registerTeacher function with this WORKING version:
 async function registerTeacher(userData) {
     try {
         showLoading();
@@ -179,37 +181,33 @@ async function registerTeacher(userData) {
             throw new Error('Invalid teacher verification code');
         }
         
-        // Check if email is from university domain
+        // Check email domain
         if (!userData.email.includes('@university.edu')) {
             throw new Error('Please use your official university email');
         }
         
-        // Create authentication user
+        // Create auth user
         const userCredential = await auth.createUserWithEmailAndPassword(
             userData.email, 
             userData.password
         );
         
-        // Upload profile photo
-        let photoURL = '';
-        if (userData.photo) {
-            photoURL = await uploadProfilePhoto(userCredential.user.uid, userData.photo);
-        }
+        const userId = userCredential.user.uid;
         
-        // Store user data in Firestore (pending approval)
-        await db.collection('users').doc(userCredential.user.uid).set({
+        // Save to users collection
+        await db.collection('users').doc(userId).set({
             name: userData.name,
             employeeId: userData.employeeId,
             department: userData.department,
             email: userData.email,
             role: 'pending_teacher',
-            profilePhotoURL: photoURL,
+            profilePhotoURL: '',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         
-        // Create teacher approval request
-        await db.collection('teacher_approvals').doc(userCredential.user.uid).set({
-            userId: userCredential.user.uid,
+        // Save to teacher_approvals collection
+        await db.collection('teacher_approvals').doc(userId).set({
+            userId: userId,
             name: userData.name,
             employeeId: userData.employeeId,
             department: userData.department,
@@ -219,11 +217,15 @@ async function registerTeacher(userData) {
         });
         
         showToast('Registration submitted for approval!', 'success');
-        return userCredential.user;
+        closeModals();
+        
+        setTimeout(() => {
+            window.location.href = 'pending-approval.html';
+        }, 1500);
         
     } catch (error) {
-        console.error('Teacher registration error:', error);
-        showToast(error.message || 'Registration failed', 'error');
+        console.error('Registration error:', error);
+        showToast(error.message, 'error');
         throw error;
     } finally {
         hideLoading();
@@ -253,16 +255,65 @@ async function getDeviceId() {
 
 // Upload Profile Photo
 async function uploadProfilePhoto(userId, file) {
-    const storageRef = storage.ref();
-    const photoRef = storageRef.child(`profile_photos/${userId}/${Date.now()}_${file.name}`);
+    if (!file) {
+        console.log('No file provided');
+        return '';
+    }
+    
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        showToast('Photo size should be less than 5MB', 'warning');
+        return '';
+    }
+    
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+        showToast('Please upload an image file', 'warning');
+        return '';
+    }
     
     try {
-        const snapshot = await photoRef.put(file);
+        console.log('Starting photo upload for user:', userId);
+        console.log('File:', file.name, 'Size:', file.size, 'Type:', file.type);
+        
+        const storageRef = storage.ref();
+        
+        // Create a clean filename
+        const timestamp = Date.now();
+        const fileExtension = file.name.split('.').pop();
+        const fileName = `profile_${timestamp}.${fileExtension}`;
+        const photoRef = storageRef.child(`profile_photos/${userId}/${fileName}`);
+        
+        // Upload the file
+        const snapshot = await photoRef.put(file, {
+            contentType: file.type
+        });
+        
+        console.log('Upload successful, getting download URL...');
+        
+        // Get the download URL
         const downloadURL = await snapshot.ref.getDownloadURL();
+        console.log('Photo uploaded successfully. URL:', downloadURL);
+        
         return downloadURL;
+        
     } catch (error) {
         console.error('Photo upload error:', error);
-        throw error;
+        console.error('Error code:', error.code);
+        console.error('Error message:', error.message);
+        
+        // Show specific error message
+        if (error.code === 'storage/unauthorized') {
+            showToast('Storage permission denied. Check Firebase Storage rules.', 'error');
+        } else if (error.code === 'storage/canceled') {
+            showToast('Upload was canceled', 'warning');
+        } else if (error.code === 'storage/unknown') {
+            showToast('Network error. Check your connection.', 'error');
+        } else {
+            showToast('Photo upload failed: ' + error.message, 'error');
+        }
+        
+        return ''; // Return empty string on error
     }
 }
 

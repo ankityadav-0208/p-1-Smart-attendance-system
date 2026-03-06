@@ -7,14 +7,15 @@ let chart = null;
 document.addEventListener('DOMContentLoaded', async () => {
     await loadTeacherData();
     await loadDashboardStats();
-    await loadPendingApprovals();
-    checkAdminStatus();
+    await loadStudents();
+    await loadAttendanceRecords();
+    setupSettings();
 });
 
 // Load teacher data
 async function loadTeacherData() {
     const user = JSON.parse(sessionStorage.getItem('currentUser'));
-    if (!user) {
+    if (!user || (user.role !== 'teacher' && user.role !== 'admin')) {
         window.location.href = 'index.html';
         return;
     }
@@ -27,33 +28,27 @@ async function loadTeacherData() {
     }
 }
 
-// Check if user is admin
-async function checkAdminStatus() {
+// Setup settings page
+function setupSettings() {
     const user = JSON.parse(sessionStorage.getItem('currentUser'));
-    if (user.role === 'admin') {
-        document.getElementById('approvalsLink').style.display = 'block';
-    } else {
-        document.getElementById('approvalsLink').style.display = 'none';
-    }
+    document.getElementById('settingsName').value = user.name || '';
+    document.getElementById('settingsEmail').value = user.email || '';
+    document.getElementById('settingsDepartment').value = user.department || 'Faculty';
 }
 
 // Show different sections
 function showSection(section) {
-    // Hide all sections
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
     
-    // Show selected section
     document.getElementById(`${section}Section`).classList.add('active');
     event.target.classList.add('active');
     
-    // Update page title
     const titles = {
         overview: 'Overview',
         attendance: 'Attendance Records',
-        students: 'Student Management',
+        students: 'My Students',
         reports: 'Reports',
-        approvals: 'Teacher Approvals',
         settings: 'Settings'
     };
     document.getElementById('pageTitle').textContent = titles[section];
@@ -111,7 +106,6 @@ async function loadDashboardStats() {
 async function loadAttendanceChart() {
     const ctx = document.getElementById('attendanceChart').getContext('2d');
     
-    // Get last 7 days attendance
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 7);
@@ -121,28 +115,20 @@ async function loadAttendanceChart() {
         .where('timestamp', '<=', endDate)
         .get();
 
-    // Create array of last 7 days with proper formatting
     const last7Days = [];
     const dailyCount = {};
     
     for (let i = 6; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
-        const dateStr = date.toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric' 
-        });
+        const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         last7Days.push(dateStr);
         dailyCount[dateStr] = 0;
     }
 
-    // Count attendance per day
     recordsSnapshot.forEach(doc => {
         const date = doc.data().timestamp.toDate();
-        const dateStr = date.toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric' 
-        });
+        const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         if (dailyCount.hasOwnProperty(dateStr)) {
             dailyCount[dateStr]++;
         }
@@ -150,75 +136,38 @@ async function loadAttendanceChart() {
 
     const counts = last7Days.map(date => dailyCount[date]);
 
-    // Destroy existing chart if it exists
     if (chart) chart.destroy();
 
-    // Create new chart with disabled animation and proper defaults
     chart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: last7Days,
             datasets: [{
-                label: 'Students Present',
+                label: 'Daily Attendance',
                 data: counts,
                 borderColor: '#4a90e2',
                 backgroundColor: 'rgba(74, 144, 226, 0.1)',
-                borderWidth: 2,
-                pointBackgroundColor: '#1e3c72',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointRadius: 4,
-                tension: 0.3,
+                tension: 0.4,
                 fill: true
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            animation: {
-                duration: 0 // Disable animation to prevent "increasing" effect
-            },
             plugins: {
                 legend: {
-                    display: true,
-                    labels: {
-                        color: '#333'
-                    }
-                },
-                tooltip: {
-                    enabled: true
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    min: 0,
-                    ticks: {
-                        stepSize: 1,
-                        precision: 0,
-                        callback: function(value) {
-                            return value + ' students';
-                        }
-                    },
-                    grid: {
-                        color: 'rgba(0,0,0,0.1)'
-                    }
-                },
-                x: {
-                    grid: {
-                        display: false
-                    }
+                    display: false
                 }
             }
         }
     });
 }
+
 // Start attendance session
 async function startAttendance() {
     try {
         const user = JSON.parse(sessionStorage.getItem('currentUser'));
         
-        // Create session
         const sessionData = {
             createdBy: user.uid,
             startTime: firebase.firestore.FieldValue.serverTimestamp(),
@@ -233,18 +182,14 @@ async function startAttendance() {
             ...sessionData
         };
 
-        // Generate QR code
         generateQRCode(sessionRef.id, sessionData.sessionToken);
         
-        // Enable stop button
         document.getElementById('stopBtn').disabled = false;
         document.querySelector('button[onclick="startAttendance()"]').disabled = true;
         
-        // Show QR container
         document.getElementById('qrContainer').classList.remove('hidden');
         document.getElementById('sessionId').textContent = sessionRef.id;
         
-        // Start QR refresh timer
         startQRTimer();
         
         showToast('Attendance session started', 'success');
@@ -284,7 +229,7 @@ function generateSessionToken() {
 
 // Start QR refresh timer
 function startQRTimer() {
-    let timeLeft = 300; // 5 minutes in seconds
+    let timeLeft = 300;
     const timerElement = document.getElementById('qrTimer');
     
     qrRefreshInterval = setInterval(() => {
@@ -294,12 +239,10 @@ function startQRTimer() {
         const seconds = timeLeft % 60;
         timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
         
-        // Refresh QR every 10 seconds
         if (timeLeft % 10 === 0 && currentSession) {
             currentSession.sessionToken = generateSessionToken();
             generateQRCode(currentSession.id, currentSession.sessionToken);
             
-            // Update session in Firestore
             db.collection('attendance_sessions').doc(currentSession.id).update({
                 sessionToken: currentSession.sessionToken
             });
@@ -321,19 +264,16 @@ async function stopAttendance() {
             });
         }
         
-        // Clear interval
         if (qrRefreshInterval) {
             clearInterval(qrRefreshInterval);
         }
         
-        // Update UI
         document.getElementById('stopBtn').disabled = true;
         document.querySelector('button[onclick="startAttendance()"]').disabled = false;
         document.getElementById('qrContainer').classList.add('hidden');
         
         showToast('Attendance session ended', 'info');
         
-        // Reload stats
         loadDashboardStats();
         loadAttendanceRecords();
     } catch (error) {
@@ -356,22 +296,21 @@ async function loadAttendanceRecords() {
         for (const doc of recordsSnapshot) {
             const record = doc.data();
             
-            // Get student name
             const studentDoc = await db.collection('users').doc(record.studentId).get();
             const studentData = studentDoc.data();
-            
-            // Get session info
-            const sessionDoc = await db.collection('attendance_sessions').doc(record.sessionId).get();
-            const sessionData = sessionDoc.data();
 
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${formatDate(record.timestamp)}</td>
-                <td>${record.sessionId.substring(0, 8)}...</td>
                 <td>${studentData?.name || 'Unknown'}</td>
                 <td>${studentData?.roll || 'N/A'}</td>
-                <td>${record.location?.coords ? 'Valid' : 'Invalid'}</td>
-                <td><button class="btn btn-sm btn-primary" onclick="viewSelfie('${record.selfieURL}')">View</button></td>
+                <td>${studentData?.section || 'N/A'}</td>
+                <td><span class="badge badge-success">Present</span></td>
+                <td>
+                    ${record.selfieURL ? 
+                        `<button class="btn btn-sm btn-primary" onclick="viewSelfie('${record.selfieURL}')">View</button>` : 
+                        'No selfie'}
+                </td>
             `;
             tbody.appendChild(row);
         }
@@ -395,17 +334,15 @@ async function loadStudents() {
         for (const doc of studentsSnapshot) {
             const student = doc.data();
             
-            // Calculate attendance percentage
             const attendanceSnapshot = await db.collection('attendance_records')
                 .where('studentId', '==', doc.id)
                 .get();
             
             const totalSessions = await db.collection('attendance_sessions').get();
             const percentage = totalSessions.size > 0 
-                ? (attendanceSnapshot.size / totalSessions.size * 100).toFixed(1)
+                ? ((attendanceSnapshot.size / totalSessions.size) * 100).toFixed(1)
                 : 0;
 
-            // Get last attendance
             const lastAttendanceSnapshot = await db.collection('attendance_records')
                 .where('studentId', '==', doc.id)
                 .orderBy('timestamp', 'desc')
@@ -421,16 +358,10 @@ async function loadStudents() {
                 <td>${student.section || 'N/A'}</td>
                 <td>${percentage}%</td>
                 <td>${lastAttendance ? formatDate(lastAttendance) : 'Never'}</td>
-                <td>
-                    <button class="btn btn-sm btn-primary" onclick="viewStudentHistory('${doc.id}')">
-                        <i class="fas fa-history"></i>
-                    </button>
-                </td>
             `;
             tbody.appendChild(row);
         }
 
-        // Load sections for filter
         loadSections();
     } catch (error) {
         console.error('Error loading students:', error);
@@ -458,8 +389,8 @@ async function loadSections() {
         const option = document.createElement('option');
         option.value = section;
         option.textContent = section;
-        sectionFilter.appendChild(option.cloneNode(true));
-        reportSection.appendChild(option);
+        if (sectionFilter) sectionFilter.appendChild(option.cloneNode(true));
+        if (reportSection) reportSection.appendChild(option.cloneNode(true));
     });
 }
 
@@ -478,19 +409,17 @@ async function filterStudents() {
     for (const doc of studentsSnapshot) {
         const student = doc.data();
         
-        // Apply filters
         if (section && student.section !== section) continue;
         if (search && !student.name.toLowerCase().includes(search) && 
             !student.roll?.toLowerCase().includes(search)) continue;
 
-        // Calculate attendance
         const attendanceSnapshot = await db.collection('attendance_records')
             .where('studentId', '==', doc.id)
             .get();
         
         const totalSessions = await db.collection('attendance_sessions').get();
         const percentage = totalSessions.size > 0 
-            ? (attendanceSnapshot.size / totalSessions.size * 100).toFixed(1)
+            ? ((attendanceSnapshot.size / totalSessions.size) * 100).toFixed(1)
             : 0;
 
         const row = document.createElement('tr');
@@ -500,90 +429,8 @@ async function filterStudents() {
             <td>${student.section || 'N/A'}</td>
             <td>${percentage}%</td>
             <td>N/A</td>
-            <td>
-                <button class="btn btn-sm btn-primary" onclick="viewStudentHistory('${doc.id}')">
-                    <i class="fas fa-history"></i>
-                </button>
-            </td>
         `;
         tbody.appendChild(row);
-    }
-}
-
-// Load pending teacher approvals
-async function loadPendingApprovals() {
-    try {
-        const approvalsSnapshot = await db.collection('teacher_approvals')
-            .where('status', '==', 'pending')
-            .orderBy('requestedAt', 'desc')
-            .get();
-
-        const tbody = document.getElementById('approvalsTableBody');
-        if (!tbody) return;
-
-        document.getElementById('pendingCount').textContent = approvalsSnapshot.size;
-
-        tbody.innerHTML = '';
-        approvalsSnapshot.forEach(doc => {
-            const approval = doc.data();
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${approval.name}</td>
-                <td>${approval.employeeId}</td>
-                <td>${approval.department}</td>
-                <td>${approval.email}</td>
-                <td>${formatDate(approval.requestedAt)}</td>
-                <td>
-                    <button class="btn btn-sm btn-success" onclick="approveTeacher('${doc.id}', '${approval.userId}')">
-                        <i class="fas fa-check"></i> Approve
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="rejectTeacher('${doc.id}')">
-                        <i class="fas fa-times"></i> Reject
-                    </button>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
-    } catch (error) {
-        console.error('Error loading approvals:', error);
-    }
-}
-
-// Approve teacher
-async function approveTeacher(approvalId, userId) {
-    try {
-        // Update user role
-        await db.collection('users').doc(userId).update({
-            role: 'teacher'
-        });
-
-        // Update approval status
-        await db.collection('teacher_approvals').doc(approvalId).update({
-            status: 'approved',
-            approvedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        showToast('Teacher approved successfully', 'success');
-        loadPendingApprovals();
-    } catch (error) {
-        console.error('Error approving teacher:', error);
-        showToast('Error approving teacher', 'error');
-    }
-}
-
-// Reject teacher
-async function rejectTeacher(approvalId) {
-    try {
-        await db.collection('teacher_approvals').doc(approvalId).update({
-            status: 'rejected',
-            rejectedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        showToast('Teacher request rejected', 'info');
-        loadPendingApprovals();
-    } catch (error) {
-        console.error('Error rejecting teacher:', error);
-        showToast('Error rejecting teacher', 'error');
     }
 }
 
@@ -596,20 +443,17 @@ async function generateReport() {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
 
-    // Get attendance records for the month
     const recordsSnapshot = await db.collection('attendance_records')
         .where('timestamp', '>=', startDate)
         .where('timestamp', '<=', endDate)
         .get();
 
-    // Group by student
     const studentAttendance = {};
     recordsSnapshot.forEach(doc => {
         const record = doc.data();
         studentAttendance[record.studentId] = (studentAttendance[record.studentId] || 0) + 1;
     });
 
-    // Get total sessions in month
     const sessionsSnapshot = await db.collection('attendance_sessions')
         .where('startTime', '>=', startDate)
         .where('startTime', '<=', endDate)
@@ -617,7 +461,6 @@ async function generateReport() {
     
     const totalSessions = sessionsSnapshot.size;
 
-    // Get students
     let studentsQuery = db.collection('users').where('role', '==', 'student');
     if (section) {
         studentsQuery = studentsQuery.where('section', '==', section);
@@ -625,20 +468,18 @@ async function generateReport() {
     
     const studentsSnapshot = await studentsQuery.get();
 
-    // Prepare chart data
     const labels = [];
     const data = [];
 
     studentsSnapshot.forEach(doc => {
         const student = doc.data();
         const attended = studentAttendance[doc.id] || 0;
-        const percentage = totalSessions > 0 ? (attended / totalSessions * 100).toFixed(1) : 0;
+        const percentage = totalSessions > 0 ? ((attended / totalSessions) * 100).toFixed(1) : 0;
         
         labels.push(student.name);
         data.push(percentage);
     });
 
-    // Update chart
     const ctx = document.getElementById('reportChart').getContext('2d');
     new Chart(ctx, {
         type: 'bar',
@@ -670,19 +511,17 @@ async function downloadCSV() {
             .orderBy('timestamp', 'desc')
             .get();
 
-        let csv = 'Date,Student Name,Roll Number,Section,Location Status,Session ID\n';
+        let csv = 'Date,Student Name,Roll Number,Section,Session ID\n';
 
         for (const doc of recordsSnapshot) {
             const record = doc.data();
             
-            // Get student data
             const studentDoc = await db.collection('users').doc(record.studentId).get();
             const student = studentDoc.data();
 
-            csv += `${formatDate(record.timestamp)},${student?.name || 'Unknown'},${student?.roll || 'N/A'},${student?.section || 'N/A'},${record.location?.coords ? 'Valid' : 'Invalid'},${record.sessionId}\n`;
+            csv += `${formatDate(record.timestamp)},${student?.name || 'Unknown'},${student?.roll || 'N/A'},${student?.section || 'N/A'},${record.sessionId}\n`;
         }
 
-        // Download file
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -706,6 +545,35 @@ function viewSelfie(url) {
     }
 }
 
+// Change password
+async function changePassword() {
+    const newPassword = prompt('Enter new password (minimum 6 characters):');
+    if (newPassword && newPassword.length >= 6) {
+        try {
+            const user = auth.currentUser;
+            await user.updatePassword(newPassword);
+            showToast('Password updated successfully', 'success');
+        } catch (error) {
+            console.error('Password update error:', error);
+            showToast('Error updating password', 'error');
+        }
+    } else if (newPassword) {
+        showToast('Password must be at least 6 characters', 'error');
+    }
+}
+
+// Format date
+function formatDate(timestamp) {
+    if (!timestamp) return 'N/A';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleString();
+}
+
+// Load sections for report
+function loadSectionsForReport() {
+    // Already handled in loadSections
+}
+
 // Export functions
 window.showSection = showSection;
 window.startAttendance = startAttendance;
@@ -714,5 +582,4 @@ window.filterStudents = filterStudents;
 window.generateReport = generateReport;
 window.downloadCSV = downloadCSV;
 window.viewSelfie = viewSelfie;
-window.approveTeacher = approveTeacher;
-window.rejectTeacher = rejectTeacher;
+window.changePassword = changePassword;

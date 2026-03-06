@@ -266,6 +266,31 @@
         </div>
     </div>
 
+    <!-- Manage Students Section -->
+    <div id="studentsSection" class="section">
+        <h3>Manage Students</h3>
+        <div class="filters">
+            <input type="text" id="searchStudent" placeholder="Search student..." onkeyup="filterStudents()">
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Roll No</th>
+                        <th>Name</th>
+                        <th>Section</th>
+                        <th>Email</th>
+                        <th>Attendance %</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="studentsTableBody">
+                    <tr><td colspan="6" style="text-align: center;">Loading students...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- Selfie Capture Modal -->
     <div id="selfieModal" class="modal">
         <div class="modal-content">

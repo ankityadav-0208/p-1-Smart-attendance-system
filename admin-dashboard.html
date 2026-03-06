@@ -3,31 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher Dashboard - Smart Attendance System</title>
+    <title>Admin Dashboard - Smart Attendance System</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 </head>
 <body>
     <div class="dashboard">
-        <!-- Sidebar - Teacher View (No Admin Features) -->
+        <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
                 <img src="" alt="Profile" class="profile-image" id="profileImage">
-                <h3 id="teacherName">Loading...</h3>
-                <p id="teacherDepartment"></p>
+                <h3 id="adminName">Loading...</h3>
+                <p>Administrator</p>
             </div>
             <nav class="sidebar-nav">
                 <a href="#" class="active" onclick="showSection('overview')">
                     <i class="fas fa-home"></i> Overview
                 </a>
-                <a href="#" onclick="showSection('attendance')">
-                    <i class="fas fa-calendar-check"></i> Attendance
+                <a href="#" onclick="showSection('teachers')">
+                    <i class="fas fa-chalkboard-teacher"></i> Teachers
                 </a>
                 <a href="#" onclick="showSection('students')">
                     <i class="fas fa-users"></i> Students
+                </a>
+                <a href="#" onclick="showSection('approvals')">
+                    <i class="fas fa-user-clock"></i> Pending Approvals
+                    <span class="badge" id="pendingCount">0</span>
                 </a>
                 <a href="#" onclick="showSection('reports')">
                     <i class="fas fa-chart-bar"></i> Reports
@@ -58,6 +61,16 @@
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-icon">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Total Teachers</h3>
+                            <span class="stat-number" id="totalTeachers">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">
                             <i class="fas fa-users"></i>
                         </div>
                         <div class="stat-info">
@@ -68,78 +81,50 @@
                     
                     <div class="stat-card">
                         <div class="stat-icon">
+                            <i class="fas fa-user-clock"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Pending Approvals</h3>
+                            <span class="stat-number" id="pendingApprovals">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">
                             <i class="fas fa-calendar-check"></i>
                         </div>
                         <div class="stat-info">
-                            <h3>Today's Attendance</h3>
-                            <span class="stat-number" id="todayAttendance">0</span>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-chart-line"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3>Average Attendance</h3>
-                            <span class="stat-number" id="avgAttendance">0%</span>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3>Active Sessions</h3>
-                            <span class="stat-number" id="activeSessions">0</span>
+                            <h3>Total Sessions</h3>
+                            <span class="stat-number" id="totalSessions">0</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- QR Code Section -->
-                <div class="qr-section glass-effect">
-                    <h3>Start Attendance Session</h3>
-                    <div class="qr-controls">
-                        <button class="btn btn-primary btn-large" onclick="startAttendance()">
-                            <i class="fas fa-play"></i> Start Attendance
-                        </button>
-                        <button class="btn btn-danger btn-large" onclick="stopAttendance()" disabled id="stopBtn">
-                            <i class="fas fa-stop"></i> Stop Attendance
-                        </button>
-                    </div>
-                    
-                    <div id="qrContainer" class="qr-container hidden">
-                        <div id="qrcode"></div>
-                        <p class="qr-timer">QR expires in: <span id="qrTimer">5:00</span></p>
-                        <p class="qr-info">Session ID: <span id="sessionId"></span></p>
-                        <p class="qr-info">Students marked: <span id="markedCount">0</span></p>
-                    </div>
-                </div>
-
-                <!-- Monthly Attendance Chart -->
+                <!-- In the overview section -->
                 <div class="chart-container glass-effect">
-                    <h3>Monthly Attendance Overview</h3>
-                    <canvas id="attendanceChart"></canvas>
+                    <h3>System Overview</h3>
+                    <div style="height: 350px; width: 100%; position: relative; margin-top: 20px;">
+                        <canvas id="adminChart" style="display: block; width: 100%; height: 100%;"></canvas>
+                    </div>
                 </div>
             </div>
 
-            <!-- Attendance Section -->
-            <div id="attendanceSection" class="section">
-                <h3>Attendance Records</h3>
+            <!-- Teachers Section -->
+            <div id="teachersSection" class="section">
+                <h3>Manage Teachers</h3>
                 <div class="table-container">
-                    <table id="attendanceTable">
+                    <table>
                         <thead>
                             <tr>
-                                <th>Date</th>
-                                <th>Student</th>
-                                <th>Roll No</th>
-                                <th>Section</th>
+                                <th>Name</th>
+                                <th>Employee ID</th>
+                                <th>Department</th>
+                                <th>Email</th>
                                 <th>Status</th>
-                                <th>Selfie</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="attendanceTableBody">
+                        <tbody id="teachersTableBody">
                             <!-- Filled dynamically -->
                         </tbody>
                     </table>
@@ -148,11 +133,8 @@
 
             <!-- Students Section -->
             <div id="studentsSection" class="section">
-                <h3>My Students</h3>
+                <h3>Manage Students</h3>
                 <div class="filters">
-                    <select id="sectionFilter" onchange="filterStudents()">
-                        <option value="">All Sections</option>
-                    </select>
                     <input type="text" id="searchStudent" placeholder="Search student..." onkeyup="filterStudents()">
                 </div>
                 <div class="table-container">
@@ -162,8 +144,9 @@
                                 <th>Roll No</th>
                                 <th>Name</th>
                                 <th>Section</th>
+                                <th>Email</th>
                                 <th>Attendance %</th>
-                                <th>Last Attendance</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="studentsTableBody">
@@ -173,9 +156,31 @@
                 </div>
             </div>
 
+            <!-- Pending Approvals Section -->
+            <div id="approvalsSection" class="section">
+                <h3>Pending Teacher Approvals</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Employee ID</th>
+                                <th>Department</th>
+                                <th>Email</th>
+                                <th>Requested On</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="approvalsTableBody">
+                            <tr><td colspan="6" style="text-align: center;">Loading approvals...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- Reports Section -->
             <div id="reportsSection" class="section">
-                <h3>Attendance Reports</h3>
+                <h3>System Reports</h3>
                 <div class="reports-controls">
                     <select id="reportMonth">
                         <option value="1">January</option>
@@ -191,42 +196,15 @@
                         <option value="11">November</option>
                         <option value="12">December</option>
                     </select>
-                    <select id="reportSection">
-                        <option value="">All Sections</option>
-                    </select>
                     <button class="btn btn-primary" onclick="generateReport()">
-                        <i class="fas fa-chart-bar"></i> View Report
+                        <i class="fas fa-file-pdf"></i> Generate Report
                     </button>
                     <button class="btn btn-success" onclick="downloadCSV()">
                         <i class="fas fa-download"></i> Download CSV
                     </button>
                 </div>
-                
                 <div class="chart-container">
                     <canvas id="reportChart"></canvas>
-                </div>
-            </div>
-
-            <!-- Settings Section -->
-            <div id="settingsSection" class="section">
-                <h3>Settings</h3>
-                <div class="settings-card glass-effect">
-                    <h4>Profile Settings</h4>
-                    <div class="form-group">
-                        <label>Name</label>
-                        <input type="text" id="settingsName" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" id="settingsEmail" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label>Department</label>
-                        <input type="text" id="settingsDepartment" readonly>
-                    </div>
-                    <button class="btn btn-primary" onclick="changePassword()">
-                        <i class="fas fa-key"></i> Change Password
-                    </button>
                 </div>
             </div>
         </div>
@@ -240,10 +218,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="js/firebase-config.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/teacher.js"></script>
+    <script src="js/admin.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
