@@ -623,23 +623,36 @@ async function submitAttendance() {
         // Get location
         const position = await getCurrentLocation();
         
-        // Verify location (within 50 meters of classroom)
+        // 🔴 STEP 5: Verify location with distance display
+        // Set your classroom coordinates here
         const classroomLocation = {
-            latitude: 40.7128, // Example coordinates - replace with actual classroom coordinates
-            longitude: -74.0060
+            latitude: 28.168746, // 🔴 REPLACE with your actual classroom latitude
+            longitude: 76.827109 // 🔴 REPLACE with your actual classroom longitude
         };
-        
+
+        // Calculate distance between student and classroom
         const distance = calculateDistance(
             position.coords.latitude,
             position.coords.longitude,
             classroomLocation.latitude,
             classroomLocation.longitude
         );
+
+        // Round to nearest meter
+        const distanceInMeters = Math.round(distance);
         
-        if (distance > 50) {
-            throw new Error('You must be within 50 meters of the classroom');
+        console.log(`📍 Student location: ${position.coords.latitude}, ${position.coords.longitude}`);
+        console.log(`📍 Classroom location: ${classroomLocation.latitude}, ${classroomLocation.longitude}`);
+        console.log(`📏 Distance: ${distanceInMeters} meters from classroom`);
+
+        // Check if within 1 kilometer (1000 meters)
+        if (distanceInMeters > 1000) {
+            throw new Error(`You are ${distanceInMeters} meters away. Maximum allowed distance is 1000 meters (1 km).`);
+        } else {
+            showToast(`✅ Location verified: ${distanceInMeters} meters from classroom`, 'success');
         }
 
+        // Rest of the code continues here...
         // Upload selfie
         const selfieURL = await uploadSelfie(user.uid, currentScanData.sessionId, selfieImage);
 
@@ -650,7 +663,8 @@ async function submitAttendance() {
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             location: {
                 coords: position.coords,
-                timestamp: position.timestamp
+                timestamp: position.timestamp,
+                distance: distanceInMeters // Also store the distance
             },
             selfieURL: selfieURL
         });
