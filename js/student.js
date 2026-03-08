@@ -613,71 +613,72 @@ function retakeSelfie() {
     openSelfieCapture();
 }
 
-// Submit attendance
+// Submit attendance - SIMPLIFIED VERSION
 async function submitAttendance() {
+    console.log('📝 Submit button clicked!');
+    
     try {
         showLoading();
         
         const user = JSON.parse(sessionStorage.getItem('currentUser'));
         
+        if (!currentScanData) {
+            throw new Error('No QR code data found');
+        }
+        
+        if (!selfieImage) {
+            throw new Error('No selfie captured');
+        }
+        
         // Get location
         const position = await getCurrentLocation();
         
-        // 🔴 STEP 5: Verify location with distance display
-        // Set your classroom coordinates here
+        // Your classroom coordinates
         const classroomLocation = {
-            latitude: 28.168746, // 🔴 REPLACE with your actual classroom latitude
-            longitude: 76.827109 // 🔴 REPLACE with your actual classroom longitude
+            latitude: 29.171743, // Change to your coordinates
+            longitude: 75.735818
         };
-
-        // Calculate distance between student and classroom
+        
+        // Calculate distance
         const distance = calculateDistance(
             position.coords.latitude,
             position.coords.longitude,
             classroomLocation.latitude,
             classroomLocation.longitude
         );
-
-        // Round to nearest meter
+        
         const distanceInMeters = Math.round(distance);
         
-        console.log(`📍 Student location: ${position.coords.latitude}, ${position.coords.longitude}`);
-        console.log(`📍 Classroom location: ${classroomLocation.latitude}, ${classroomLocation.longitude}`);
-        console.log(`📏 Distance: ${distanceInMeters} meters from classroom`);
-
-        // Check if within 1 kilometer (1000 meters)
         if (distanceInMeters > 1000) {
-            throw new Error(`You are ${distanceInMeters} meters away. Maximum allowed distance is 1000 meters (1 km).`);
-        } else {
-            showToast(`✅ Location verified: ${distanceInMeters} meters from classroom`, 'success');
+            throw new Error(`You are ${distanceInMeters}m away. Max allowed: 1000m`);
         }
-
-        // Rest of the code continues here...
+        
         // Upload selfie
         const selfieURL = await uploadSelfie(user.uid, currentScanData.sessionId, selfieImage);
-
-        // Create attendance record
+        
+        // Save attendance
         await db.collection('attendance_records').add({
             studentId: user.uid,
             sessionId: currentScanData.sessionId,
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             location: {
                 coords: position.coords,
-                timestamp: position.timestamp,
-                distance: distanceInMeters // Also store the distance
+                distance: distanceInMeters
             },
             selfieURL: selfieURL
         });
-
-        showToast('Attendance marked successfully!', 'success');
         
-        // Close modal and refresh data
+        showToast('✅ Attendance marked successfully!', 'success');
+        
+        // Close modal
         closeSelfieModal();
+        
+        // Refresh data
         await loadDashboardStats();
         await loadRecentAttendance();
-
+        
     } catch (error) {
-        console.error('Attendance submission error:', error);
+        console.error('❌ Error:', error);
         showToast(error.message, 'error');
     } finally {
         hideLoading();
@@ -813,6 +814,21 @@ async function changePassword() {
         showToast('Password must be at least 6 characters', 'error');
     }
 }
+
+
+// Test function for submit button
+document.addEventListener('DOMContentLoaded', function() {
+    const submitBtn = document.getElementById('submitAttendanceBtn');
+    if (submitBtn) {
+        console.log('✅ Submit button found in DOM');
+        submitBtn.addEventListener('click', function(e) {
+            console.log('👆 Submit button clicked via event listener');
+            submitAttendance();
+        });
+    } else {
+        console.error('❌ Submit button not found in DOM');
+    }
+});
 
 // Export functions
 window.showSection = showSection;
