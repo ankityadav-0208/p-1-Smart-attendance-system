@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const User = require('../models/User');
+const User = require('../models/User');  // This will work after renaming
 const TeacherApproval = require('../models/TeacherApproval');
 const { generateToken, getDeviceId } = require('../middleware/auth');
 
@@ -46,8 +46,7 @@ router.post('/register/student', async (req, res) => {
                 email: user.email,
                 role: user.role,
                 rollNumber: user.rollNumber,
-                section: user.section,
-                deviceId: user.deviceId
+                section: user.section
             }
         });
 
@@ -59,6 +58,7 @@ router.post('/register/student', async (req, res) => {
         });
     }
 });
+
 
 // @desc    Register teacher
 // @route   POST /api/auth/register/teacher
