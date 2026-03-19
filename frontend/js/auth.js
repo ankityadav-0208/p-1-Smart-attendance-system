@@ -80,32 +80,34 @@ auth.onAuthStateChanged(async (user) => {
 async function login(email, password) {
     try {
         showLoading();
-        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        const response = await API.auth.login(email, password);
+        
+        // Store token
+        localStorage.setItem('token', response.token);
+        sessionStorage.setItem('currentUser', JSON.stringify(response.user));
+        
         showToast('Login successful!', 'success');
         
-        // Don't redirect here - let the onAuthStateChanged handle it
-        return userCredential.user;
+        // Redirect based on role
+        setTimeout(() => {
+            switch(response.user.role) {
+                case 'student':
+                    window.location.href = 'student-dashboard.html';
+                    break;
+                case 'teacher':
+                    window.location.href = 'teacher-dashboard.html';
+                    break;
+                case 'admin':
+                    window.location.href = 'admin-dashboard.html';
+                    break;
+                case 'pending_teacher':
+                    window.location.href = 'pending-approval.html';
+                    break;
+            }
+        }, 1500);
+        
     } catch (error) {
-        console.error('Login error:', error);
-        let errorMessage = 'Login failed. Please try again.';
-        
-        switch(error.code) {
-            case 'auth/user-not-found':
-                errorMessage = 'No user found with this email.';
-                break;
-            case 'auth/wrong-password':
-                errorMessage = 'Incorrect password.';
-                break;
-            case 'auth/invalid-email':
-                errorMessage = 'Invalid email address.';
-                break;
-            case 'auth/user-disabled':
-                errorMessage = 'This account has been disabled.';
-                break;
-        }
-        
-        showToast(errorMessage, 'error');
-        throw error;
+        showToast(error.message, 'error');
     } finally {
         hideLoading();
     }
