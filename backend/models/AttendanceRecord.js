@@ -39,7 +39,8 @@ const AttendanceRecordSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Ensure one student per session
+// Ensure one student per session (unique compound index)
 AttendanceRecordSchema.index({ studentId: 1, sessionId: 1 }, { unique: true });
 
-module.exports = mongoose.model('AttendanceRecord', AttendanceRecordSchema);
+// ✅ FIXED: Check if model already exists before creating
+module.exports = mongoose.models.AttendanceRecord || mongoose.model('AttendanceRecord', AttendanceRecordSchema);
