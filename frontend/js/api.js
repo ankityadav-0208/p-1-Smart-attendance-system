@@ -1,7 +1,6 @@
 // API Service for backend communication
 const API = {
-    baseURL: 'https://p-1-smart-attendance-system-02.onrender.com/api', // Your live backend URL
-    
+    baseURL: 'https://p-1-smart-attendance-system-02.onrender.com/api',
     
     // Helper method for API calls
     async request(endpoint, options = {}) {
@@ -21,6 +20,11 @@ const API = {
             headers,
             credentials: 'include'
         };
+        
+        // Don't set Content-Type for FormData (let browser set it)
+        if (options.body && options.body instanceof FormData) {
+            delete headers['Content-Type'];
+        }
         
         try {
             const response = await fetch(`${this.baseURL}${endpoint}`, config);
@@ -108,14 +112,13 @@ const API = {
                 body: JSON.stringify({ sessionId, token })
             }),
         
-        markAttendance: async (sessionId, location, selfieFile) => {
+        markAttendance: (sessionId, location, selfieFile) => {
             const formData = new FormData();
             formData.append('data', JSON.stringify({ sessionId, location }));
             formData.append('selfie', selfieFile);
             
             return API.request('/student/mark-attendance', {
                 method: 'POST',
-                headers: {}, // Let browser set content-type for FormData
                 body: formData
             });
         },
@@ -128,106 +131,5 @@ const API = {
     }
 };
 
-// Update auth.js to use API instead of Firebase
-async function login(email, password) {
-    try {
-        showLoading();
-        const response = await API.auth.login(email, password);
-        
-        // Store token
-        localStorage.setItem('token', response.token);
-        sessionStorage.setItem('currentUser', JSON.stringify(response.user));
-        
-        showToast('Login successful!', 'success');
-        return response.user;
-    } catch (error) {
-        showToast(error.message, 'error');
-        throw error;
-    } finally {
-        hideLoading();
-    }
-}
-
-async function registerStudent(userData) {
-    try {
-        showLoading();
-        const response = await API.auth.registerStudent(userData);
-        
-        localStorage.setItem('token', response.token);
-        sessionStorage.setItem('currentUser', JSON.stringify(response.user));
-        
-        showToast('Registration successful!', 'success');
-        closeModals();
-        
-        setTimeout(() => {
-            window.location.href = 'student-dashboard.html';
-        }, 1500);
-        
-        return response.user;
-    } catch (error) {
-        showToast(error.message, 'error');
-        throw error;
-    } finally {
-        hideLoading();
-    }
-}
-
-async function registerTeacher(userData) {
-    try {
-        showLoading();
-        const response = await API.auth.registerTeacher(userData);
-        
-        showToast('Registration submitted for approval!', 'success');
-        closeModals();
-        
-        setTimeout(() => {
-            window.location.href = 'pending-approval.html';
-        }, 1500);
-        
-        return response;
-    } catch (error) {
-        showToast(error.message, 'error');
-        throw error;
-    } finally {
-        hideLoading();
-    }
-}
-
-async function logout() {
-    localStorage.removeItem('token');
-    sessionStorage.removeItem('currentUser');
-    window.location.href = 'index.html';
-}
-
-// Check auth state on page load
-document.addEventListener('DOMContentLoaded', async () => {
-    const token = localStorage.getItem('token');
-    const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-    
-    if (token && currentPage === 'index.html') {
-        try {
-            const response = await API.auth.getMe();
-            sessionStorage.setItem('currentUser', JSON.stringify(response.user));
-            
-            // Redirect based on role
-            switch(response.user.role) {
-                case 'student':
-                    window.location.href = 'student-dashboard.html';
-                    break;
-                case 'teacher':
-                    window.location.href = 'teacher-dashboard.html';
-                    break;
-                case 'admin':
-                    window.location.href = 'admin-dashboard.html';
-                    break;
-                case 'pending_teacher':
-                    window.location.href = 'pending-approval.html';
-                    break;
-            }
-        } catch (error) {
-            localStorage.removeItem('token');
-        }
-    } else if (!token && currentPage !== 'index.html' && currentPage !== '') {
-        window.location.href = 'index.html';
-    }
-});
+// Make API available globally
+window.API = API;

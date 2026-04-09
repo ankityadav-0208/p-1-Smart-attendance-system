@@ -1,6 +1,9 @@
 // Global variables
 let currentUser = null;
 
+// API Base URL - Update this to your Render backend URL
+const API_BASE_URL = 'https://p-1-smart-attendance-system-02.onrender.com/api';
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
     initializeEventListeners();
@@ -41,7 +44,6 @@ function initializeEventListeners() {
 }
 
 // Handle login
-// Handle login
 async function handleLoginSubmit(e) {
     e.preventDefault();
     
@@ -55,35 +57,55 @@ async function handleLoginSubmit(e) {
     
     try {
         showLoading();
-        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        
+        // Call your backend API
+        const response = await fetch(`${API_BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.message || 'Login failed');
+        }
+        
+        // Store the token and user data
+        localStorage.setItem('token', data.token);
+        sessionStorage.setItem('currentUser', JSON.stringify(data.user));
+        currentUser = data.user;
+        
         showToast('Login successful!', 'success');
         
         // Close modal
         closeModals();
         
-        // The redirect will happen automatically via auth.onAuthStateChanged in auth.js
+        // Redirect based on user role
+        setTimeout(() => {
+            switch(data.user.role) {
+                case 'student':
+                    window.location.href = 'student-dashboard.html';
+                    break;
+                case 'teacher':
+                    window.location.href = 'teacher-dashboard.html';
+                    break;
+                case 'admin':
+                    window.location.href = 'admin-dashboard.html';
+                    break;
+                case 'pending_teacher':
+                    window.location.href = 'pending-approval.html';
+                    break;
+                default:
+                    window.location.href = 'index.html';
+            }
+        }, 1500);
+        
     } catch (error) {
         console.error('Login error:', error);
-        let errorMessage = 'Login failed. Please try again.';
-        
-        switch(error.code) {
-            case 'auth/user-not-found':
-                errorMessage = 'No user found with this email.';
-                break;
-            case 'auth/wrong-password':
-                errorMessage = 'Incorrect password.';
-                break;
-            case 'auth/invalid-email':
-                errorMessage = 'Invalid email address.';
-                break;
-            case 'auth/user-disabled':
-                errorMessage = 'This account has been disabled.';
-                break;
-            default:
-                errorMessage = error.message;
-        }
-        
-        showToast(errorMessage, 'error');
+        showToast(error.message, 'error');
     } finally {
         hideLoading();
     }
@@ -101,22 +123,60 @@ async function handleStudentRegistration(e) {
         return;
     }
     
-    const photoFile = document.getElementById('studentPhoto').files[0];
-    
     const userData = {
         name: document.getElementById('studentName').value,
         roll: document.getElementById('studentRoll').value,
         section: document.getElementById('studentSection').value,
         email: document.getElementById('studentEmail').value,
-        password: password,
-        photo: photoFile
+        password: password
     };
     
     try {
-        await registerStudent(userData);
+        showLoading();
+        
+        const response = await fetch(`${API_BASE_URL}/auth/register/student`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: userData.name,
+                email: userData.email,
+                password: userData.password,
+                rollNumber: userData.roll,
+                section: userData.section
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.message || 'Registration failed');
+        }
+        
+        // Store token and user data
+        localStorage.setItem('token', data.token);
+        sessionStorage.setItem('currentUser', JSON.stringify(data.user));
+        currentUser = data.user;
+        
+        showToast('Registration successful! Redirecting...', 'success');
         closeModals();
+        
+        setTimeout(() => {
+            window.location.href = 'student-dashboard.html';
+        }, 1500);
+        
     } catch (error) {
-        // Error handled in auth.js
+        console.error('Registration error:', error);
+        let errorMessage = error.message || 'Registration failed';
+        
+        if (errorMessage.includes('duplicate') || errorMessage.includes('already exists')) {
+            errorMessage = 'Email already in use';
+        }
+        
+        showToast(errorMessage, 'error');
+    } finally {
+        hideLoading();
     }
 }
 
@@ -132,23 +192,69 @@ async function handleTeacherRegistration(e) {
         return;
     }
     
-    const photoFile = document.getElementById('teacherPhoto').files[0];
-    
     const userData = {
         name: document.getElementById('teacherName').value,
         employeeId: document.getElementById('teacherEmployeeId').value,
         department: document.getElementById('teacherDepartment').value,
         email: document.getElementById('teacherEmail').value,
         password: password,
-        verificationCode: document.getElementById('teacherCode').value,
-        photo: photoFile
+        verificationCode: document.getElementById('teacherCode').value
     };
     
     try {
-        await registerTeacher(userData);
+        showLoading();
+        
+        const response = await fetch(`${API_BASE_URL}/auth/register/teacher`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: userData.name,
+                email: userData.email,
+                password: userData.password,
+                employeeId: userData.employeeId,
+                department: userData.department,
+                verificationCode: userData.verificationCode
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.message || 'Registration failed');
+        }
+        
+        showToast('Registration submitted for approval!', 'success');
         closeModals();
+        
+        setTimeout(() => {
+            window.location.href = 'pending-approval.html';
+        }, 1500);
+        
     } catch (error) {
-        // Error handled in auth.js
+        console.error('Teacher registration error:', error);
+        showToast(error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Logout function
+async function logout() {
+    try {
+        showLoading();
+        // Clear stored data
+        localStorage.removeItem('token');
+        sessionStorage.removeItem('currentUser');
+        currentUser = null;
+        window.location.href = 'index.html';
+        showToast('Logged out successfully', 'success');
+    } catch (error) {
+        console.error('Logout error:', error);
+        showToast('Error logging out', 'error');
+    } finally {
+        hideLoading();
     }
 }
 
@@ -281,10 +387,34 @@ function scrollToFeatures() {
 
 // Check authentication state
 function checkAuthState() {
-    const currentUser = sessionStorage.getItem('currentUser');
-    if (currentUser) {
+    const token = localStorage.getItem('token');
+    const storedUser = sessionStorage.getItem('currentUser');
+    
+    if (token && storedUser) {
+        currentUser = JSON.parse(storedUser);
         // User is logged in, update UI accordingly
-        updateUIForLoggedInUser(JSON.parse(currentUser));
+        updateUIForLoggedInUser(currentUser);
+        
+        // If on index page, redirect to appropriate dashboard
+        const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+        if (currentPage === 'index.html' || currentPage === '') {
+            setTimeout(() => {
+                switch(currentUser.role) {
+                    case 'student':
+                        window.location.href = 'student-dashboard.html';
+                        break;
+                    case 'teacher':
+                        window.location.href = 'teacher-dashboard.html';
+                        break;
+                    case 'admin':
+                        window.location.href = 'admin-dashboard.html';
+                        break;
+                    case 'pending_teacher':
+                        window.location.href = 'pending-approval.html';
+                        break;
+                }
+            }, 500);
+        }
     }
 }
 
@@ -305,7 +435,7 @@ function updateUIForLoggedInUser(user) {
 // Format date
 function formatDate(timestamp) {
     if (!timestamp) return 'N/A';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const date = new Date(timestamp);
     return date.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
@@ -315,6 +445,9 @@ function formatDate(timestamp) {
     });
 }
 
+// Make API_BASE_URL available globally for other files
+window.API_BASE_URL = API_BASE_URL;
+
 // Export functions for use in other files
 window.showLoginModal = showLoginModal;
 window.showRegisterModal = showRegisterModal;
@@ -323,3 +456,7 @@ window.selectRole = selectRole;
 window.scrollToFeatures = scrollToFeatures;
 window.toggleDarkMode = toggleDarkMode;
 window.logout = logout;
+window.showToast = showToast;
+window.showLoading = showLoading;
+window.hideLoading = hideLoading;
+window.formatDate = formatDate;

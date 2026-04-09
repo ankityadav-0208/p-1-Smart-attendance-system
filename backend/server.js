@@ -27,7 +27,7 @@ app.use(helmet());
 
 // Enable CORS
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5500',
+    origin: process.env.CLIENT_URL || 'https://ankityadav-0208.github.io/p-1-Smart-attendance-system/',
     credentials: true
 }));
 
