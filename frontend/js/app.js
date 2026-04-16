@@ -1,7 +1,7 @@
 // Global variables
 let currentUser = null;
 
-// API Base URL - Define this here
+// API Base URL
 const API_BASE_URL = 'https://p-1-smart-attendance-system-02.onrender.com/api';
 
 // Initialize app
@@ -58,7 +58,6 @@ async function handleLoginSubmit(e) {
     try {
         showLoading();
         
-        // Call your backend API
         const response = await fetch(`${API_BASE_URL}/auth/login`, {
             method: 'POST',
             headers: {
@@ -73,17 +72,13 @@ async function handleLoginSubmit(e) {
             throw new Error(data.message || 'Login failed');
         }
         
-        // Store the token and user data
         localStorage.setItem('token', data.token);
         sessionStorage.setItem('currentUser', JSON.stringify(data.user));
         currentUser = data.user;
         
         showToast('Login successful!', 'success');
-        
-        // Close modal
         closeModals();
         
-        // Redirect based on user role
         setTimeout(() => {
             switch(data.user.role) {
                 case 'student':
@@ -154,7 +149,6 @@ async function handleStudentRegistration(e) {
             throw new Error(data.message || 'Registration failed');
         }
         
-        // Store token and user data
         localStorage.setItem('token', data.token);
         sessionStorage.setItem('currentUser', JSON.stringify(data.user));
         currentUser = data.user;
@@ -244,7 +238,6 @@ async function handleTeacherRegistration(e) {
 async function logout() {
     try {
         showLoading();
-        // Clear stored data
         localStorage.removeItem('token');
         sessionStorage.removeItem('currentUser');
         currentUser = null;
@@ -258,19 +251,33 @@ async function logout() {
     }
 }
 
+// ============================================
+// MODAL FUNCTIONS - These are called from HTML buttons
+// ============================================
+
 // Show login modal
 function showLoginModal(role) {
+    console.log('showLoginModal called with role:', role);
     const modal = document.getElementById('loginModal');
     const title = document.getElementById('modalTitle');
-    title.textContent = role === 'teacher' ? 'Teacher Login' : 'Student Login';
-    modal.style.display = 'block';
+    if (modal && title) {
+        title.textContent = role === 'teacher' ? 'Teacher Login' : 'Student Login';
+        modal.style.display = 'block';
+    } else {
+        console.error('Modal or title element not found');
+    }
 }
 
 // Show register modal
 function showRegisterModal() {
+    console.log('showRegisterModal called');
     const modal = document.getElementById('registerModal');
-    modal.style.display = 'block';
-    selectRole('student'); // Default to student
+    if (modal) {
+        modal.style.display = 'block';
+        selectRole('student');
+    } else {
+        console.error('Register modal not found');
+    }
 }
 
 // Switch to register from login
@@ -287,15 +294,15 @@ function selectRole(role) {
     const teacherBtn = document.querySelector('.role-btn[onclick="selectRole(\'teacher\')"]');
     
     if (role === 'student') {
-        studentForm.classList.add('active');
-        teacherForm.classList.remove('active');
-        studentBtn.classList.add('active');
-        teacherBtn.classList.remove('active');
+        if (studentForm) studentForm.classList.add('active');
+        if (teacherForm) teacherForm.classList.remove('active');
+        if (studentBtn) studentBtn.classList.add('active');
+        if (teacherBtn) teacherBtn.classList.remove('active');
     } else {
-        teacherForm.classList.add('active');
-        studentForm.classList.remove('active');
-        teacherBtn.classList.add('active');
-        studentBtn.classList.remove('active');
+        if (teacherForm) teacherForm.classList.add('active');
+        if (studentForm) studentForm.classList.remove('active');
+        if (teacherBtn) teacherBtn.classList.add('active');
+        if (studentBtn) studentBtn.classList.remove('active');
     }
 }
 
@@ -306,18 +313,19 @@ function closeModals() {
     });
 }
 
+// ============================================
+// UI FUNCTIONS
+// ============================================
+
 // Show toast notification
 function showToast(message, type = 'info') {
-    const container = document.getElementById('toastContainer');
+    let container = document.getElementById('toastContainer');
     if (!container) {
-        // Create container if it doesn't exist
-        const newContainer = document.createElement('div');
-        newContainer.id = 'toastContainer';
-        newContainer.className = 'toast-container';
-        document.body.appendChild(newContainer);
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
     }
-    
-    const toastContainer = document.getElementById('toastContainer');
     
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
@@ -332,14 +340,13 @@ function showToast(message, type = 'info') {
         <span>${message}</span>
     `;
     
-    toastContainer.appendChild(toast);
+    container.appendChild(toast);
     
-    // Remove after 3 seconds
     setTimeout(() => {
         toast.style.animation = 'slideOut 0.3s ease';
         setTimeout(() => {
-            if (toastContainer.contains(toast)) {
-                toastContainer.removeChild(toast);
+            if (container.contains(toast)) {
+                container.removeChild(toast);
             }
         }, 300);
     }, 3000);
@@ -392,10 +399,8 @@ function checkAuthState() {
     
     if (token && storedUser) {
         currentUser = JSON.parse(storedUser);
-        // User is logged in, update UI accordingly
         updateUIForLoggedInUser(currentUser);
         
-        // If on index page, redirect to appropriate dashboard
         const currentPage = window.location.pathname.split('/').pop() || 'index.html';
         if (currentPage === 'index.html' || currentPage === '') {
             setTimeout(() => {
@@ -420,7 +425,6 @@ function checkAuthState() {
 
 // Update UI for logged in user
 function updateUIForLoggedInUser(user) {
-    // Update navigation buttons
     const navButtons = document.querySelector('.nav-buttons');
     if (navButtons) {
         navButtons.innerHTML = `
@@ -445,7 +449,9 @@ function formatDate(timestamp) {
     });
 }
 
-// Export functions for use in other files
+// ============================================
+// EXPORT FUNCTIONS TO WINDOW - CRITICAL FOR HTML BUTTONS
+// ============================================
 window.showLoginModal = showLoginModal;
 window.showRegisterModal = showRegisterModal;
 window.switchToRegister = switchToRegister;
@@ -457,3 +463,9 @@ window.showToast = showToast;
 window.showLoading = showLoading;
 window.hideLoading = hideLoading;
 window.formatDate = formatDate;
+
+console.log('app.js loaded. Functions exported:', {
+    showLoginModal: typeof window.showLoginModal,
+    showRegisterModal: typeof window.showRegisterModal,
+    toggleDarkMode: typeof window.toggleDarkMode
+});
