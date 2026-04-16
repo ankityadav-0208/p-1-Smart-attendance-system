@@ -3,8 +3,8 @@
 // Store chart instance globally
 let adminChart = null;
 
-// ✅ Define API_BASE_URL here
-const API_BASE_URL = 'https://p-1-smart-attendance-system-02.onrender.com/api';
+// ✅ Define API.baseURL here
+
 
 // Helper function for API calls with auth token
 async function apiRequest(endpoint, options = {}) {
@@ -19,7 +19,7 @@ async function apiRequest(endpoint, options = {}) {
         headers['Authorization'] = `Bearer ${token}`;
     }
     
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(`${API.baseURL}${endpoint}`, {
         ...options,
         headers
     });

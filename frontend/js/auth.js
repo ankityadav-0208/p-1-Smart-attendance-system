@@ -1,5 +1,5 @@
 // API Base URL - Make sure this matches your backend
-const API_BASE_URL = 'https://p-1-smart-attendance-system-02.onrender.com/api';
+
 
 // Teacher verification code
 const TEACHER_VERIFICATION_CODE = "TEACH2024SECURE";
@@ -63,7 +63,7 @@ async function login(email, password) {
         showLoading();
         console.log('Logging in with email:', email);
         
-        const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        const response = await fetch(`${API.baseURL}/auth/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -121,7 +121,7 @@ async function registerStudent(userData) {
         showLoading();
         console.log('Starting registration for:', userData.email);
         
-        const response = await fetch(`${API_BASE_URL}/auth/register/student`, {
+        const response = await fetch(`${API.baseURL}/auth/register/student`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -187,7 +187,7 @@ async function registerTeacher(userData) {
             throw new Error('Please use your official university email (must contain @university.edu)');
         }
         
-        const response = await fetch(`${API_BASE_URL}/auth/register/teacher`, {
+        const response = await fetch(`${API.baseURL}/auth/register/teacher`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

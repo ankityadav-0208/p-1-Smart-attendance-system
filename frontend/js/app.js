@@ -2,7 +2,7 @@
 let currentUser = null;
 
 // API Base URL
-const API_BASE_URL = 'https://p-1-smart-attendance-system-02.onrender.com/api';
+
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
@@ -58,7 +58,7 @@ async function handleLoginSubmit(e) {
     try {
         showLoading();
         
-        const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        const response = await fetch(`${API.baseURL}/auth/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -129,7 +129,7 @@ async function handleStudentRegistration(e) {
     try {
         showLoading();
         
-        const response = await fetch(`${API_BASE_URL}/auth/register/student`, {
+        const response = await fetch(`${API.baseURL}/auth/register/student`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -198,7 +198,7 @@ async function handleTeacherRegistration(e) {
     try {
         showLoading();
         
-        const response = await fetch(`${API_BASE_URL}/auth/register/teacher`, {
+        const response = await fetch(`${API.baseURL}/auth/register/teacher`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
