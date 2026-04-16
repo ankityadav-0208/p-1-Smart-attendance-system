@@ -3,7 +3,8 @@
 // Store chart instance globally
 let adminChart = null;
 
-// API Base URL
+// ✅ Define API_BASE_URL here
+const API_BASE_URL = 'https://p-1-smart-attendance-system-02.onrender.com/api';
 
 // Helper function for API calls with auth token
 async function apiRequest(endpoint, options = {}) {
@@ -55,6 +56,13 @@ async function loadAdminData() {
     if (user.profilePhotoURL) {
         document.getElementById('profileImage').src = user.profilePhotoURL;
     }
+}
+
+// Toggle dark mode
+function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+    const isDark = document.body.classList.contains('dark-mode');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
 }
 
 // Show different sections
@@ -499,3 +507,4 @@ window.disableTeacher = disableTeacher;
 window.disableStudent = disableStudent;
 window.generateReport = generateReport;
 window.downloadCSV = downloadCSV;
+window.toggleDarkMode = toggleDarkMode;

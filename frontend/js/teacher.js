@@ -3,8 +3,6 @@ let currentSession = null;
 let qrRefreshInterval = null;
 let chart = null;
 
-// API Base URL
-
 // Helper function for API calls with auth token
 async function apiRequest(endpoint, options = {}) {
     const token = localStorage.getItem('token');
@@ -18,7 +16,8 @@ async function apiRequest(endpoint, options = {}) {
         headers['Authorization'] = `Bearer ${token}`;
     }
     
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    // Use API.baseURL from the global API object (defined in api.js)
+    const response = await fetch(`${API.baseURL}${endpoint}`, {
         ...options,
         headers
     });
@@ -359,8 +358,7 @@ async function loadStudents() {
                 <td>${student.name}</td>
                 <td>${student.section || 'N/A'}</td>
                 <td>${percentage}%</td>
-                <td>Never</td>
-            `;
+                <td>Never\n            `;
             tbody.appendChild(row);
         }
 
@@ -435,8 +433,7 @@ async function filterStudents() {
                 <td>${student.name}</td>
                 <td>${student.section || 'N/A'}</td>
                 <td>${percentage}%</td>
-                <td>N/A</td>
-            `;
+                <td>N/A\n            `;
             tbody.appendChild(row);
         }
     } catch (error) {
@@ -524,6 +521,13 @@ function viewSelfie(url) {
     }
 }
 
+// Toggle dark mode
+function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+    const isDark = document.body.classList.contains('dark-mode');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+}
+
 // Change password - Using API
 async function changePassword() {
     const currentPassword = prompt('Enter current password:');
@@ -581,7 +585,7 @@ function hideLoading() {
     if (loader) loader.remove();
 }
 
-// Export functions
+// ✅ EXPORT ALL FUNCTIONS TO WINDOW
 window.showSection = showSection;
 window.startAttendance = startAttendance;
 window.stopAttendance = stopAttendance;
@@ -590,3 +594,4 @@ window.generateReport = generateReport;
 window.downloadCSV = downloadCSV;
 window.viewSelfie = viewSelfie;
 window.changePassword = changePassword;
+window.toggleDarkMode = toggleDarkMode;

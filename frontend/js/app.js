@@ -1,7 +1,8 @@
 // Global variables
 let currentUser = null;
 
-// API Base URL - Update this to your Render backend URL
+// API Base URL - Define this here
+const API_BASE_URL = 'https://p-1-smart-attendance-system-02.onrender.com/api';
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
@@ -443,9 +444,6 @@ function formatDate(timestamp) {
         minute: '2-digit'
     });
 }
-
-// Make API_BASE_URL available globally for other files
-window.API_BASE_URL = API_BASE_URL;
 
 // Export functions for use in other files
 window.showLoginModal = showLoginModal;

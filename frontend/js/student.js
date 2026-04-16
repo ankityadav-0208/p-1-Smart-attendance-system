@@ -3,8 +3,6 @@ let currentScanData = null;
 let selfieImage = null;
 let studentChart = null;
 
-// API Base URL
-
 // Helper function for API calls with auth token
 async function apiRequest(endpoint, options = {}) {
     const token = localStorage.getItem('token');
@@ -23,7 +21,8 @@ async function apiRequest(endpoint, options = {}) {
         delete headers['Content-Type'];
     }
     
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    // Use API.baseURL from the global API object (defined in api.js)
+    const response = await fetch(`${API.baseURL}${endpoint}`, {
         ...options,
         headers
     });
@@ -524,7 +523,7 @@ async function submitAttendance() {
         }));
         formData.append('selfie', selfieImage);
         
-        const response = await fetch(`${API_BASE_URL}/student/mark-attendance`, {
+        const response = await fetch(`${API.baseURL}/student/mark-attendance`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -659,6 +658,13 @@ async function changePassword() {
     }
 }
 
+// Toggle dark mode
+function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+    const isDark = document.body.classList.contains('dark-mode');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+}
+
 // Loading functions
 function showLoading() {
     let loader = document.getElementById('studentLoader');
@@ -688,7 +694,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Export functions
+// ✅ EXPORT ALL FUNCTIONS TO WINDOW - THIS IS THE FIX!
 window.showSection = showSection;
 window.scanQR = scanQR;
 window.startQRScanner = startQRScanner;
@@ -701,3 +707,4 @@ window.viewSelfie = viewSelfie;
 window.filterHistory = filterHistory;
 window.updatePhoto = updatePhoto;
 window.changePassword = changePassword;
+window.toggleDarkMode = toggleDarkMode;
