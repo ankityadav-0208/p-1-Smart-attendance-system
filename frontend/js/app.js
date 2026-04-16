@@ -2,7 +2,6 @@
 let currentUser = null;
 
 // API Base URL - Update this to your Render backend URL
-const API_BASE_URL = 'https://p-1-smart-attendance-system-02.onrender.com/api';
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {

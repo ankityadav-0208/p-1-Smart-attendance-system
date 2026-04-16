@@ -4,7 +4,6 @@ let selfieImage = null;
 let studentChart = null;
 
 // API Base URL
-const API_BASE_URL = 'https://p-1-smart-attendance-system-02.onrender.com/api';
 
 // Helper function for API calls with auth token
 async function apiRequest(endpoint, options = {}) {
