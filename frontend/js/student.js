@@ -3,6 +3,41 @@ let currentScanData = null;
 let selfieImage = null;
 let studentChart = null;
 
+// API Base URL
+const API_BASE_URL = 'https://p-1-smart-attendance-system-02.onrender.com/api';
+
+// Helper function for API calls with auth token
+async function apiRequest(endpoint, options = {}) {
+    const token = localStorage.getItem('token');
+    
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+    
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    // For FormData, remove Content-Type header
+    if (options.body && options.body instanceof FormData) {
+        delete headers['Content-Type'];
+    }
+    
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+        throw new Error(data.message || 'API request failed');
+    }
+    
+    return data;
+}
+
 // Load student data on page load
 document.addEventListener('DOMContentLoaded', async () => {
     await loadStudentData();
@@ -19,16 +54,15 @@ async function loadStudentData() {
     }
 
     document.getElementById('studentName').textContent = user.name;
-    document.getElementById('studentInfo').textContent = `${user.roll || ''} • ${user.section || ''}`;
+    document.getElementById('studentInfo').textContent = `${user.rollNumber || ''} • ${user.section || ''}`;
     
     if (user.profilePhotoURL) {
         document.getElementById('profileImage').src = user.profilePhotoURL;
         document.getElementById('profilePhoto').src = user.profilePhotoURL;
     }
 
-    // Load profile details
     document.getElementById('profileName').textContent = user.name;
-    document.getElementById('profileRoll').textContent = user.roll || 'N/A';
+    document.getElementById('profileRoll').textContent = user.rollNumber || 'N/A';
     document.getElementById('profileSection').textContent = user.section || 'N/A';
     document.getElementById('profileEmail').textContent = user.email;
     document.getElementById('profileDeviceId').textContent = user.deviceId ? user.deviceId.substring(0, 16) + '...' : 'N/A';
@@ -40,15 +74,12 @@ async function loadStudentData() {
 
 // Show different sections
 function showSection(section) {
-    // Hide all sections
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
     
-    // Show selected section
     document.getElementById(`${section}Section`).classList.add('active');
     event.target.classList.add('active');
     
-    // Update page title
     const titles = {
         overview: 'Overview',
         history: 'Attendance History',
@@ -57,55 +88,26 @@ function showSection(section) {
     };
     document.getElementById('pageTitle').textContent = titles[section];
     
-    // Load section-specific data
     if (section === 'history') loadAttendanceHistory();
     if (section === 'analytics') loadAnalytics();
 }
 
-// Load dashboard statistics
+// Load dashboard statistics - Using API
 async function loadDashboardStats() {
     try {
         const user = JSON.parse(sessionStorage.getItem('currentUser'));
         
-        // Get total sessions
-        const sessionsSnapshot = await db.collection('attendance_sessions')
-            .where('active', '==', false)
-            .get();
-        const totalClasses = sessionsSnapshot.size;
-        document.getElementById('totalClasses').textContent = totalClasses;
-
-        // Get student's attendance
-        const attendanceSnapshot = await db.collection('attendance_records')
-            .where('studentId', '==', user.uid)
-            .get();
+        const response = await apiRequest('/student/stats');
+        const stats = response.data;
         
-        const attended = attendanceSnapshot.size;
-        document.getElementById('classesAttended').textContent = attended;
+        document.getElementById('totalClasses').textContent = stats.total || 0;
+        document.getElementById('classesAttended').textContent = stats.attended || 0;
+        document.getElementById('attendancePercentage').textContent = (stats.percentage || 0) + '%';
 
-        // Calculate percentage
-        const percentage = totalClasses > 0 ? (attended / totalClasses * 100).toFixed(1) : 0;
-        document.getElementById('attendancePercentage').textContent = percentage + '%';
-
-        // Load chart
-        loadStudentChart();
-
-        // Calculate rank (simplified - based on attendance percentage)
-        const allStudentsSnapshot = await db.collection('users')
-            .where('role', '==', 'student')
-            .get();
+        loadStudentChart(stats.dailyAttendance || {});
         
-        const studentPercentages = [];
-        for (const doc of allStudentsSnapshot.docs) {
-            const studentAttendance = await db.collection('attendance_records')
-                .where('studentId', '==', doc.id)
-                .get();
-            const studentPercentage = totalClasses > 0 ? (studentAttendance.size / totalClasses * 100) : 0;
-            studentPercentages.push(studentPercentage);
-        }
-        
-        studentPercentages.sort((a, b) => b - a);
-        const rank = studentPercentages.indexOf(parseFloat(percentage)) + 1;
-        document.getElementById('studentRank').textContent = rank || '-';
+        // For rank - we'll keep simple for now
+        document.getElementById('studentRank').textContent = '-';
 
     } catch (error) {
         console.error('Error loading stats:', error);
@@ -114,33 +116,10 @@ async function loadDashboardStats() {
 }
 
 // Load student chart
-async function loadStudentChart() {
-    const user = JSON.parse(sessionStorage.getItem('currentUser'));
+function loadStudentChart(dailyAttendance = {}) {
     const ctx = document.getElementById('studentChart').getContext('2d');
     
-    // Get last 30 days attendance
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 30);
-
-    const recordsSnapshot = await db.collection('attendance_records')
-        .where('studentId', '==', user.uid)
-        .where('timestamp', '>=', startDate)
-        .where('timestamp', '<=', endDate)
-        .get();
-
-    // Create daily attendance map
-    const dailyAttendance = {};
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        const dateStr = d.toLocaleDateString();
-        dailyAttendance[dateStr] = 0;
-    }
-
-    recordsSnapshot.forEach(doc => {
-        const date = doc.data().timestamp.toDate().toLocaleDateString();
-        dailyAttendance[date] = 1;
-    });
-
+    // Get last 30 days
     const dates = Object.keys(dailyAttendance);
     const values = Object.values(dailyAttendance);
 
@@ -160,6 +139,7 @@ async function loadStudentChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: { duration: 0 },
             scales: {
                 y: {
                     beginAtZero: true,
@@ -170,38 +150,31 @@ async function loadStudentChart() {
                     }
                 }
             },
-            plugins: {
-                legend: {
-                    display: false
-                }
-            }
+            plugins: { legend: { display: false } }
         }
     });
 }
 
-// Load recent attendance
+// Load recent attendance - Using API
 async function loadRecentAttendance() {
     try {
         const user = JSON.parse(sessionStorage.getItem('currentUser'));
         
-        const recordsSnapshot = await db.collection('attendance_records')
-            .where('studentId', '==', user.uid)
-            .orderBy('timestamp', 'desc')
-            .limit(5)
-            .get();
-
+        const response = await apiRequest('/student/history');
+        const records = response.data;
+        
         const tbody = document.getElementById('recentAttendanceBody');
         tbody.innerHTML = '';
 
-        recordsSnapshot.forEach(doc => {
-            const record = doc.data();
-            const date = record.timestamp.toDate();
+        records.slice(0, 5).forEach(record => {
+            const date = new Date(record.timestamp);
+            const sessionId = record.sessionId?._id || record.sessionId;
             
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${date.toLocaleDateString()}</td>
                 <td>${date.toLocaleTimeString()}</td>
-                <td>${record.sessionId.substring(0, 8)}...</td>
+                <td>${sessionId?.substring(0, 8) || 'N/A'}...</td>
                 <td><span class="badge badge-success">Present</span></td>
             `;
             tbody.appendChild(row);
@@ -211,32 +184,30 @@ async function loadRecentAttendance() {
     }
 }
 
-// Load attendance history
+// Load attendance history - Using API
 async function loadAttendanceHistory() {
     try {
         const user = JSON.parse(sessionStorage.getItem('currentUser'));
         
-        const recordsSnapshot = await db.collection('attendance_records')
-            .where('studentId', '==', user.uid)
-            .orderBy('timestamp', 'desc')
-            .get();
+        const response = await apiRequest('/student/history');
+        const records = response.data;
 
         const tbody = document.getElementById('historyTableBody');
         tbody.innerHTML = '';
 
-        recordsSnapshot.forEach(doc => {
-            const record = doc.data();
-            const date = record.timestamp.toDate();
+        records.forEach(record => {
+            const date = new Date(record.timestamp);
+            const sessionId = record.sessionId?._id || record.sessionId;
             
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${date.toLocaleDateString()}</td>
                 <td>${date.toLocaleTimeString()}</td>
-                <td>${record.sessionId.substring(0, 12)}...</td>
-                <td>${record.location?.coords ? '✓ Verified' : 'N/A'}</td>
+                <td>${sessionId?.substring(0, 12) || 'N/A'}...</td>
+                <td>${record.location?.distance ? '✓ Verified' : 'N/A'}</td>
                 <td>
-                    ${record.selfieURL ? 
-                        `<button class="btn btn-sm btn-primary" onclick="viewSelfie('${record.selfieURL}')">
+                    ${record.selfieUrl ? 
+                        `<button class="btn btn-sm btn-primary" onclick="viewSelfie('${record.selfieUrl}')">
                             <i class="fas fa-eye"></i>
                         </button>` : 
                         'N/A'}
@@ -259,35 +230,34 @@ async function filterHistory() {
     }
 
     try {
-        const user = JSON.parse(sessionStorage.getItem('currentUser'));
-        const year = new Date().getFullYear();
+        const response = await apiRequest('/student/history');
+        let records = response.data;
         
+        const year = new Date().getFullYear();
         const startDate = new Date(year, month - 1, 1);
         const endDate = new Date(year, month, 0);
-
-        const recordsSnapshot = await db.collection('attendance_records')
-            .where('studentId', '==', user.uid)
-            .where('timestamp', '>=', startDate)
-            .where('timestamp', '<=', endDate)
-            .orderBy('timestamp', 'desc')
-            .get();
+        
+        records = records.filter(record => {
+            const date = new Date(record.timestamp);
+            return date >= startDate && date <= endDate;
+        });
 
         const tbody = document.getElementById('historyTableBody');
         tbody.innerHTML = '';
 
-        recordsSnapshot.forEach(doc => {
-            const record = doc.data();
-            const date = record.timestamp.toDate();
+        records.forEach(record => {
+            const date = new Date(record.timestamp);
+            const sessionId = record.sessionId?._id || record.sessionId;
             
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${date.toLocaleDateString()}</td>
                 <td>${date.toLocaleTimeString()}</td>
-                <td>${record.sessionId.substring(0, 12)}...</td>
-                <td>${record.location?.coords ? '✓ Verified' : 'N/A'}</td>
+                <td>${sessionId?.substring(0, 12) || 'N/A'}...</td>
+                <td>${record.location?.distance ? '✓ Verified' : 'N/A'}</td>
                 <td>
-                    ${record.selfieURL ? 
-                        `<button class="btn btn-sm btn-primary" onclick="viewSelfie('${record.selfieURL}')">
+                    ${record.selfieUrl ? 
+                        `<button class="btn btn-sm btn-primary" onclick="viewSelfie('${record.selfieUrl}')">
                             <i class="fas fa-eye"></i>
                         </button>` : 
                         'N/A'}
@@ -300,40 +270,23 @@ async function filterHistory() {
     }
 }
 
-// Load analytics
+// Load analytics - Using API
 async function loadAnalytics() {
     try {
-        const user = JSON.parse(sessionStorage.getItem('currentUser'));
+        const response = await apiRequest('/student/stats');
+        const stats = response.data;
         
-        // Get all attendance records
-        const recordsSnapshot = await db.collection('attendance_records')
-            .where('studentId', '==', user.uid)
-            .get();
-        
-        const totalPresent = recordsSnapshot.size;
-        
-        // Get total classes
-        const sessionsSnapshot = await db.collection('attendance_sessions')
-            .where('active', '==', false)
-            .get();
-        const totalClasses = sessionsSnapshot.size;
+        document.getElementById('presentCount').textContent = stats.attended || 0;
+        const totalClasses = stats.total || 0;
+        const totalPresent = stats.attended || 0;
         const totalAbsent = totalClasses - totalPresent;
-        
-        const percentage = totalClasses > 0 ? (totalPresent / totalClasses * 100).toFixed(1) : 0;
-
-        // Update summary
-        document.getElementById('presentCount').textContent = totalPresent;
         document.getElementById('absentCount').textContent = totalAbsent;
-        document.getElementById('totalPercentage').textContent = percentage + '%';
+        document.getElementById('totalPercentage').textContent = (stats.percentage || 0) + '%';
         
-        // Calculate required attendance to maintain 75%
         const requiredToMaintain = Math.max(0, Math.ceil(0.75 * totalClasses - totalPresent));
         document.getElementById('requiredAttendance').textContent = requiredToMaintain;
 
-        // Load weekly chart
         loadWeeklyChart();
-        
-        // Load monthly comparison
         loadMonthlyComparison();
         
     } catch (error) {
@@ -344,24 +297,15 @@ async function loadAnalytics() {
 // Load weekly chart
 async function loadWeeklyChart() {
     const ctx = document.getElementById('weeklyChart').getContext('2d');
-    const user = JSON.parse(sessionStorage.getItem('currentUser'));
     
-    // Get last 7 days
+    const response = await apiRequest('/student/history');
+    const records = response.data;
+    
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const weeklyData = [0, 0, 0, 0, 0, 0, 0];
     
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 7);
-
-    const recordsSnapshot = await db.collection('attendance_records')
-        .where('studentId', '==', user.uid)
-        .where('timestamp', '>=', startDate)
-        .where('timestamp', '<=', endDate)
-        .get();
-
-    recordsSnapshot.forEach(doc => {
-        const date = doc.data().timestamp.toDate();
+    records.forEach(record => {
+        const date = new Date(record.timestamp);
         const day = date.getDay();
         weeklyData[day]++;
     });
@@ -381,7 +325,8 @@ async function loadWeeklyChart() {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false
+            maintainAspectRatio: false,
+            animation: { duration: 0 }
         }
     });
 }
@@ -389,60 +334,28 @@ async function loadWeeklyChart() {
 // Load monthly comparison
 async function loadMonthlyComparison() {
     const ctx = document.getElementById('monthlyComparisonChart').getContext('2d');
-    const user = JSON.parse(sessionStorage.getItem('currentUser'));
     
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const monthlyData = new Array(12).fill(0);
     const monthlyTotal = new Array(12).fill(0);
 
-    // Get all sessions by month
-    const sessionsSnapshot = await db.collection('attendance_sessions')
-        .where('active', '==', false)
-        .get();
-
-    sessionsSnapshot.forEach(doc => {
-        const session = doc.data();
-        if (session.startTime) {
-            const month = session.startTime.toDate().getMonth();
-            monthlyTotal[month]++;
-        }
-    });
-
-    // Get student's attendance by month
-    const recordsSnapshot = await db.collection('attendance_records')
-        .where('studentId', '==', user.uid)
-        .get();
-
-    recordsSnapshot.forEach(doc => {
-        const record = doc.data();
-        const month = record.timestamp.toDate().getMonth();
-        monthlyData[month]++;
-    });
-
-    // Calculate percentages
-    const percentages = monthlyData.map((attended, index) => 
-        monthlyTotal[index] > 0 ? (attended / monthlyTotal[index] * 100).toFixed(1) : 0
-    );
-
+    // This would need separate API endpoints for monthly data
+    // For now, showing placeholder
     new Chart(ctx, {
         type: 'bar',
         data: {
             labels: months,
             datasets: [{
                 label: 'Attendance %',
-                data: percentages,
+                data: monthlyData,
                 backgroundColor: '#4a90e2'
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 100
-                }
-            }
+            animation: { duration: 0 },
+            scales: { y: { beginAtZero: true, max: 100 } }
         }
     });
 }
@@ -458,8 +371,6 @@ async function startQRScanner() {
         const video = document.getElementById('qrVideo');
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         video.srcObject = stream;
-        
-        // Start scanning
         scanQRCode();
     } catch (error) {
         console.error('Camera error:', error);
@@ -485,66 +396,44 @@ function scanQRCode() {
             if (code) {
                 clearInterval(scanInterval);
                 processQRCode(code.data);
-                
-                // Stop video stream
                 video.srcObject.getTracks().forEach(track => track.stop());
             }
         }
     }, 500);
 }
 
-// Process QR code data
+// Process QR code data - Using API
 async function processQRCode(qrData) {
     try {
         const data = JSON.parse(qrData);
         
-        // Validate QR data
         if (data.type !== 'attendance') {
             throw new Error('Invalid QR code');
         }
 
-        // Check if session exists and is active
-        const sessionDoc = await db.collection('attendance_sessions').doc(data.sessionId).get();
-        
-        if (!sessionDoc.exists) {
-            throw new Error('Invalid session');
+        // Validate session with backend
+        const response = await apiRequest('/student/validate-session', {
+            method: 'POST',
+            body: JSON.stringify({ sessionId: data.sessionId, token: data.token })
+        });
+
+        if (!response.success) {
+            throw new Error(response.message);
         }
 
-        const session = sessionDoc.data();
-        
-        if (!session.active) {
-            throw new Error('Session has ended');
-        }
-
-        // Check token
-        if (session.sessionToken !== data.token) {
-            throw new Error('Invalid session token');
-        }
-
-        // Check if already marked
         const user = JSON.parse(sessionStorage.getItem('currentUser'));
-        const existingRecord = await db.collection('attendance_records')
-            .where('sessionId', '==', data.sessionId)
-            .where('studentId', '==', user.uid)
-            .get();
-
-        if (!existingRecord.empty) {
-            throw new Error('Attendance already marked for this session');
-        }
-
+        
         // Check device ID
         const deviceId = await getDeviceId();
-        if (user.deviceId !== deviceId) {
+        if (user.deviceId && user.deviceId !== deviceId) {
             throw new Error('Device not recognized. Please use your registered device.');
         }
 
-        // Store scan data
         currentScanData = {
             sessionId: data.sessionId,
             token: data.token
         };
 
-        // Close scanner and open selfie capture
         closeQRScanner();
         openSelfieCapture();
 
@@ -579,20 +468,16 @@ function captureSelfie() {
     canvas.height = video.videoHeight;
     canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
     
-    // Convert to blob
     canvas.toBlob(async (blob) => {
         selfieImage = blob;
         
-        // Show preview
         preview.src = URL.createObjectURL(blob);
         preview.classList.remove('hidden');
         video.classList.add('hidden');
         
-        // Update buttons
         document.getElementById('submitAttendanceBtn').disabled = false;
         document.getElementById('retakeBtn').style.display = 'inline-block';
         
-        // Stop video
         video.srcObject.getTracks().forEach(track => track.stop());
     }, 'image/jpeg');
 }
@@ -609,11 +494,10 @@ function retakeSelfie() {
     document.getElementById('retakeBtn').style.display = 'none';
     selfieImage = null;
     
-    // Restart video
     openSelfieCapture();
 }
 
-// Submit attendance - SIMPLIFIED VERSION
+// Submit attendance - Using API
 async function submitAttendance() {
     console.log('📝 Submit button clicked!');
     
@@ -633,47 +517,31 @@ async function submitAttendance() {
         // Get location
         const position = await getCurrentLocation();
         
-        // Your classroom coordinates
-        const classroomLocation = {
-            latitude: 29.171743, // Change to your coordinates
-            longitude: 75.735818
-        };
-        
-        // Calculate distance
-        const distance = calculateDistance(
-            position.coords.latitude,
-            position.coords.longitude,
-            classroomLocation.latitude,
-            classroomLocation.longitude
-        );
-        
-        const distanceInMeters = Math.round(distance);
-        
-        if (distanceInMeters > 1000) {
-            throw new Error(`You are ${distanceInMeters}m away. Max allowed: 1000m`);
-        }
-        
-        // Upload selfie
-        const selfieURL = await uploadSelfie(user.uid, currentScanData.sessionId, selfieImage);
-        
-        // Save attendance
-        await db.collection('attendance_records').add({
-            studentId: user.uid,
+        // Call backend API to mark attendance
+        const formData = new FormData();
+        formData.append('data', JSON.stringify({
             sessionId: currentScanData.sessionId,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            location: {
-                coords: position.coords,
-                distance: distanceInMeters
+            location: position.coords
+        }));
+        formData.append('selfie', selfieImage);
+        
+        const response = await fetch(`${API_BASE_URL}/student/mark-attendance`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
             },
-            selfieURL: selfieURL
+            body: formData
         });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.message || 'Failed to mark attendance');
+        }
         
         showToast('✅ Attendance marked successfully!', 'success');
         
-        // Close modal
         closeSelfieModal();
-        
-        // Refresh data
         await loadDashboardStats();
         await loadRecentAttendance();
         
@@ -702,7 +570,7 @@ function getCurrentLocation() {
 
 // Calculate distance between two coordinates (Haversine formula)
 function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371e3; // Earth's radius in meters
+    const R = 6371e3;
     const φ1 = lat1 * Math.PI / 180;
     const φ2 = lat2 * Math.PI / 180;
     const Δφ = (lat2 - lat1) * Math.PI / 180;
@@ -713,22 +581,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
               Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-    return R * c; // Distance in meters
-}
-
-// Upload selfie
-async function uploadSelfie(userId, sessionId, blob) {
-    const storageRef = storage.ref();
-    const selfieRef = storageRef.child(`selfies/${userId}/${sessionId}_${Date.now()}.jpg`);
-    
-    try {
-        const snapshot = await selfieRef.put(blob);
-        const downloadURL = await snapshot.ref.getDownloadURL();
-        return downloadURL;
-    } catch (error) {
-        console.error('Selfie upload error:', error);
-        throw new Error('Failed to upload selfie');
-    }
+    return R * c;
 }
 
 // Close QR scanner
@@ -756,43 +609,29 @@ function viewSelfie(url) {
     window.open(url, '_blank');
 }
 
+// Get Device ID
+async function getDeviceId() {
+    const fingerprint = [
+        navigator.userAgent,
+        navigator.language,
+        screen.colorDepth,
+        screen.width + 'x' + screen.height,
+        new Date().getTimezoneOffset(),
+        navigator.hardwareConcurrency || 'unknown'
+    ].join('||');
+    
+    const encoder = new TextEncoder();
+    const data = encoder.encode(fingerprint);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    return hashHex;
+}
+
 // Update photo
 async function updatePhoto() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.capture = 'environment';
-    
-    input.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            try {
-                showLoading();
-                const user = JSON.parse(sessionStorage.getItem('currentUser'));
-                const photoURL = await uploadProfilePhoto(user.uid, file);
-                
-                await db.collection('users').doc(user.uid).update({
-                    profilePhotoURL: photoURL
-                });
-                
-                // Update session
-                user.profilePhotoURL = photoURL;
-                sessionStorage.setItem('currentUser', JSON.stringify(user));
-                
-                // Update UI
-                document.getElementById('profileImage').src = photoURL;
-                document.getElementById('profilePhoto').src = photoURL;
-                
-                showToast('Profile photo updated', 'success');
-            } catch (error) {
-                showToast('Error updating photo', 'error');
-            } finally {
-                hideLoading();
-            }
-        }
-    };
-    
-    input.click();
+    showToast('Photo update coming soon', 'info');
 }
 
 // Change password
@@ -801,8 +640,14 @@ async function changePassword() {
     if (newPassword && newPassword.length >= 6) {
         try {
             showLoading();
-            const user = auth.currentUser;
-            await user.updatePassword(newPassword);
+            // Call backend API to change password
+            const response = await apiRequest('/users/change-password', {
+                method: 'PUT',
+                body: JSON.stringify({ 
+                    currentPassword: prompt('Enter current password:'),
+                    newPassword: newPassword 
+                })
+            });
             showToast('Password updated successfully', 'success');
         } catch (error) {
             console.error('Password update error:', error);
@@ -815,8 +660,24 @@ async function changePassword() {
     }
 }
 
+// Loading functions
+function showLoading() {
+    let loader = document.getElementById('studentLoader');
+    if (!loader) {
+        loader = document.createElement('div');
+        loader.id = 'studentLoader';
+        loader.className = 'global-loader';
+        loader.innerHTML = '<div class="spinner"></div>';
+        document.body.appendChild(loader);
+    }
+}
 
-// Test function for submit button
+function hideLoading() {
+    const loader = document.getElementById('studentLoader');
+    if (loader) loader.remove();
+}
+
+// Event listener for submit button
 document.addEventListener('DOMContentLoaded', function() {
     const submitBtn = document.getElementById('submitAttendanceBtn');
     if (submitBtn) {
@@ -825,8 +686,6 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('👆 Submit button clicked via event listener');
             submitAttendance();
         });
-    } else {
-        console.error('❌ Submit button not found in DOM');
     }
 });
 

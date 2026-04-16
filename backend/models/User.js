@@ -28,42 +28,15 @@ const UserSchema = new mongoose.Schema({
         enum: ['student', 'teacher', 'admin', 'pending_teacher', 'disabled'],
         default: 'student'
     },
-    // Student specific fields
-    rollNumber: {
-        type: String,
-        sparse: true
-    },
-    section: {
-        type: String,
-        sparse: true
-    },
-    // Teacher specific fields
-    employeeId: {
-        type: String,
-        sparse: true
-    },
-    department: {
-        type: String,
-        sparse: true
-    },
-    deviceId: {
-        type: String,
-        sparse: true
-    },
-    profilePhoto: {
-        type: String,
-        default: ''
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now
-    },
-    lastLogin: {
-        type: Date
-    }
-}, {
-    timestamps: true
-});
+    rollNumber: { type: String, sparse: true },
+    section: { type: String, sparse: true },
+    employeeId: { type: String, sparse: true },
+    department: { type: String, sparse: true },
+    deviceId: { type: String, sparse: true },
+    profilePhoto: { type: String, default: '' },
+    createdAt: { type: Date, default: Date.now },
+    lastLogin: { type: Date }
+}, { timestamps: true });
 
 // Encrypt password using bcrypt
 UserSchema.pre('save', async function(next) {
@@ -79,4 +52,5 @@ UserSchema.methods.matchPassword = async function(enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
 
-module.exports = mongoose.model('User', UserSchema);
+// ✅ FIXED: Check if model already exists before creating
+module.exports = mongoose.models.User || mongoose.model('User', UserSchema);

@@ -32,8 +32,9 @@ const AttendanceSessionSchema = new mongoose.Schema({
     },
     expiresAt: {
         type: Date,
-        default: () => new Date(+new Date() + 5*60000) // 5 minutes from now
+        default: () => new Date(+new Date() + 5 * 60000) // 5 minutes from now
     }
 });
 
-module.exports = mongoose.model('AttendanceSession', AttendanceSessionSchema);
+// ✅ FIXED: Check if model already exists before creating
+module.exports = mongoose.models.AttendanceSession || mongoose.model('AttendanceSession', AttendanceSessionSchema);

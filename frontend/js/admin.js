@@ -3,6 +3,36 @@
 // Store chart instance globally
 let adminChart = null;
 
+// API Base URL
+const API_BASE_URL = 'https://p-1-smart-attendance-system-02.onrender.com/api';
+
+// Helper function for API calls with auth token
+async function apiRequest(endpoint, options = {}) {
+    const token = localStorage.getItem('token');
+    
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+    
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+        throw new Error(data.message || 'API request failed');
+    }
+    
+    return data;
+}
+
 // Load admin data on page load
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Admin dashboard loading...');
@@ -38,7 +68,6 @@ function showSection(section) {
         sectionElement.classList.add('active');
     }
     
-    // Find and highlight the clicked link
     const links = document.querySelectorAll('.sidebar-nav a');
     links.forEach(link => {
         if (link.getAttribute('onclick')?.includes(section)) {
@@ -57,35 +86,21 @@ function showSection(section) {
     document.getElementById('pageTitle').textContent = titles[section] || 'Overview';
 }
 
-// Load dashboard statistics
+// Load dashboard statistics - Using API
 async function loadDashboardStats() {
     try {
         console.log('Loading dashboard stats...');
         
-        // Get total teachers
-        const teachersSnapshot = await db.collection('users')
-            .where('role', '==', 'teacher')
-            .get();
-        document.getElementById('totalTeachers').textContent = teachersSnapshot.size;
+        // Call your backend API for stats
+        const response = await apiRequest('/admin/stats');
+        const stats = response.data;
+        
+        document.getElementById('totalTeachers').textContent = stats.teachers || 0;
+        document.getElementById('totalStudents').textContent = stats.students || 0;
+        document.getElementById('pendingApprovals').textContent = stats.pending || 0;
+        document.getElementById('pendingCount').textContent = stats.pending || 0;
+        document.getElementById('totalSessions').textContent = stats.sessions || 0;
 
-        // Get total students
-        const studentsSnapshot = await db.collection('users')
-            .where('role', '==', 'student')
-            .get();
-        document.getElementById('totalStudents').textContent = studentsSnapshot.size;
-
-        // Get pending approvals
-        const pendingSnapshot = await db.collection('teacher_approvals')
-            .where('status', '==', 'pending')
-            .get();
-        document.getElementById('pendingApprovals').textContent = pendingSnapshot.size;
-        document.getElementById('pendingCount').textContent = pendingSnapshot.size;
-
-        // Get total sessions
-        const sessionsSnapshot = await db.collection('attendance_sessions').get();
-        document.getElementById('totalSessions').textContent = sessionsSnapshot.size;
-
-        // Load chart with a slight delay to ensure DOM is ready
         setTimeout(() => {
             loadAdminChart();
         }, 200);
@@ -96,7 +111,7 @@ async function loadDashboardStats() {
     }
 }
 
-// Load admin chart - FIXED VERSION
+// Load admin chart
 function loadAdminChart() {
     console.log('Loading admin chart...');
     
@@ -112,7 +127,6 @@ function loadAdminChart() {
         return;
     }
     
-    // Get values with proper parsing
     const teachers = parseInt(document.getElementById('totalTeachers')?.textContent) || 0;
     const students = parseInt(document.getElementById('totalStudents')?.textContent) || 0;
     const pending = parseInt(document.getElementById('pendingApprovals')?.textContent) || 0;
@@ -120,13 +134,11 @@ function loadAdminChart() {
     
     console.log('Chart data:', { teachers, students, pending, sessions });
     
-    // Destroy existing chart if it exists
     if (adminChart) {
         adminChart.destroy();
         adminChart = null;
     }
     
-    // Create new chart
     try {
         adminChart = new Chart(ctx, {
             type: 'bar',
@@ -136,17 +148,12 @@ function loadAdminChart() {
                     label: 'Count',
                     data: [teachers, students, pending, sessions],
                     backgroundColor: [
-                        'rgba(74, 144, 226, 0.8)',   // Blue
-                        'rgba(40, 167, 69, 0.8)',    // Green
-                        'rgba(255, 193, 7, 0.8)',    // Yellow
-                        'rgba(220, 53, 69, 0.8)'     // Red
+                        'rgba(74, 144, 226, 0.8)',
+                        'rgba(40, 167, 69, 0.8)',
+                        'rgba(255, 193, 7, 0.8)',
+                        'rgba(220, 53, 69, 0.8)'
                     ],
-                    borderColor: [
-                        '#4a90e2',
-                        '#28a745',
-                        '#ffc107',
-                        '#dc3545'
-                    ],
+                    borderColor: ['#4a90e2', '#28a745', '#ffc107', '#dc3545'],
                     borderWidth: 2,
                     borderRadius: 5,
                     barPercentage: 0.7
@@ -155,13 +162,9 @@ function loadAdminChart() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: {
-                    duration: 0  // Completely disable animation
-                },
+                animation: { duration: 0 },
                 plugins: {
-                    legend: {
-                        display: false
-                    },
+                    legend: { display: false },
                     tooltip: {
                         enabled: true,
                         callbacks: {
@@ -174,36 +177,15 @@ function loadAdminChart() {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.1)',
-                            drawBorder: true
-                        },
-                        ticks: {
-                            stepSize: 1,
-                            precision: 0,
-                            font: {
-                                size: 12
-                            }
-                        }
+                        grid: { color: 'rgba(0, 0, 0, 0.1)', drawBorder: true },
+                        ticks: { stepSize: 1, precision: 0, font: { size: 12 } }
                     },
                     x: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            font: {
-                                size: 12,
-                                weight: 'bold'
-                            }
-                        }
+                        grid: { display: false },
+                        ticks: { font: { size: 12, weight: 'bold' } }
                     }
                 },
-                layout: {
-                    padding: {
-                        top: 20,
-                        bottom: 20
-                    }
-                }
+                layout: { padding: { top: 20, bottom: 20 } }
             }
         });
         
@@ -215,39 +197,29 @@ function loadAdminChart() {
     }
 }
 
-// Load pending teacher approvals
+// Load pending teacher approvals - Using API
 async function loadPendingApprovals() {
     try {
         const tbody = document.getElementById('approvalsTableBody');
         if (!tbody) return;
 
-        const approvalsSnapshot = await db.collection('teacher_approvals')
-            .where('status', '==', 'pending')
-            .get();
+        const response = await apiRequest('/admin/pending-approvals');
+        const approvals = response.data;
 
-        // Update pending count
-        document.getElementById('pendingCount').textContent = approvalsSnapshot.size;
-        document.getElementById('pendingApprovals').textContent = approvalsSnapshot.size;
+        document.getElementById('pendingCount').textContent = approvals.length;
+        document.getElementById('pendingApprovals').textContent = approvals.length;
 
-        if (approvalsSnapshot.empty) {
+        if (approvals.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">No pending approvals</td></tr>';
             return;
         }
 
         tbody.innerHTML = '';
         
-        approvalsSnapshot.forEach(doc => {
-            const approval = doc.data();
+        approvals.forEach(approval => {
             let date = 'N/A';
-            
             if (approval.requestedAt) {
-                try {
-                    date = approval.requestedAt.toDate ? 
-                        approval.requestedAt.toDate().toLocaleString() : 
-                        new Date(approval.requestedAt).toLocaleString();
-                } catch (e) {
-                    console.error('Date parsing error:', e);
-                }
+                date = new Date(approval.requestedAt).toLocaleString();
             }
             
             const row = document.createElement('tr');
@@ -258,10 +230,10 @@ async function loadPendingApprovals() {
                 <td>${approval.email || 'N/A'}</td>
                 <td>${date}</td>
                 <td>
-                    <button class="btn btn-sm btn-success" onclick="approveTeacher('${doc.id}', '${approval.userId}')">
+                    <button class="btn btn-sm btn-success" onclick="approveTeacher('${approval._id}', '${approval.userId}')">
                         <i class="fas fa-check"></i> Approve
                     </button>
-                    <button class="btn btn-sm btn-danger" onclick="rejectTeacher('${doc.id}')">
+                    <button class="btn btn-sm btn-danger" onclick="rejectTeacher('${approval._id}')">
                         <i class="fas fa-times"></i> Reject
                     </button>
                 </td>
@@ -277,26 +249,23 @@ async function loadPendingApprovals() {
     }
 }
 
-// Load teachers
+// Load teachers - Using API
 async function loadTeachers() {
     try {
-        const teachersSnapshot = await db.collection('users')
-            .where('role', '==', 'teacher')
-            .get();
+        const response = await apiRequest('/admin/teachers');
+        const teachers = response.data;
 
         const tbody = document.getElementById('teachersTableBody');
         if (!tbody) return;
 
-        if (teachersSnapshot.empty) {
+        if (teachers.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">No teachers found</td></tr>';
             return;
         }
 
         tbody.innerHTML = '';
         
-        teachersSnapshot.forEach(doc => {
-            const teacher = doc.data();
-            
+        teachers.forEach(teacher => {
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${teacher.name || 'N/A'}</td>
@@ -305,7 +274,7 @@ async function loadTeachers() {
                 <td>${teacher.email || 'N/A'}</td>
                 <td><span class="badge badge-success">Active</span></td>
                 <td>
-                    <button class="btn btn-sm btn-danger" onclick="disableTeacher('${doc.id}')">
+                    <button class="btn btn-sm btn-danger" onclick="disableTeacher('${teacher._id}')">
                         <i class="fas fa-ban"></i> Disable
                     </button>
                 </td>
@@ -317,7 +286,7 @@ async function loadTeachers() {
     }
 }
 
-// Load students - COMPLETELY FIXED VERSION
+// Load students - Using API
 async function loadStudents() {
     try {
         console.log('📚 Loading students...');
@@ -328,40 +297,30 @@ async function loadStudents() {
             return;
         }
 
-        // Show loading message
         tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Loading students...</td></tr>';
         
-        // Get all students from Firestore
-        const studentsSnapshot = await db.collection('users')
-            .where('role', '==', 'student')
-            .get();
+        const response = await apiRequest('/admin/students');
+        const students = response.data;
 
-        console.log(`✅ Found ${studentsSnapshot.size} students`);
+        console.log(`✅ Found ${students.length} students`);
 
-        // Check if snapshot is empty
-        if (studentsSnapshot.empty) {
+        if (students.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No students found</td></tr>';
             return;
         }
 
-        // Clear the table
         tbody.innerHTML = '';
         
-        // Use forEach to iterate through documents (this is the correct way)
-        studentsSnapshot.forEach(doc => {
-            const student = doc.data();
-            console.log('Student data:', student);
-            
-            // Create table row
+        students.forEach(student => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${student.roll || 'N/A'}</td>
+                <td>${student.rollNumber || 'N/A'}</td>
                 <td>${student.name || 'N/A'}</td>
                 <td>${student.section || 'N/A'}</td>
                 <td>${student.email || 'N/A'}</td>
                 <td>0%</td>
                 <td>
-                    <button class="btn btn-sm btn-danger" onclick="disableStudent('${doc.id}')">
+                    <button class="btn btn-sm btn-danger" onclick="disableStudent('${student._id}')">
                         <i class="fas fa-ban"></i> Disable
                     </button>
                 </td>
@@ -375,76 +334,59 @@ async function loadStudents() {
         console.error('❌ Error loading students:', error);
         const tbody = document.getElementById('studentsTableBody');
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="6" style="color: red; text-align: center;">
-                Error loading students: ${error.message}
-            </td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" style="color: red; text-align: center;">Error loading students: ${error.message}</td></tr>`;
         }
     }
 }
 
-// Filter students
+// Filter students - Using API
 async function filterStudents() {
     const search = document.getElementById('searchStudent').value.toLowerCase();
     
-    const studentsSnapshot = await db.collection('users')
-        .where('role', '==', 'student')
-        .get();
-
-    const tbody = document.getElementById('studentsTableBody');
-    tbody.innerHTML = '';
-
-    for (const doc of studentsSnapshot) {
-        const student = doc.data();
+    try {
+        const response = await apiRequest('/admin/students');
+        let students = response.data;
         
-        if (search && !student.name?.toLowerCase().includes(search) && 
-            !student.roll?.toLowerCase().includes(search)) {
-            continue;
+        if (search) {
+            students = students.filter(student => 
+                student.name?.toLowerCase().includes(search) || 
+                student.rollNumber?.toLowerCase().includes(search)
+            );
         }
-        
-        const attendanceSnapshot = await db.collection('attendance_records')
-            .where('studentId', '==', doc.id)
-            .get();
-        
-        const totalSessions = await db.collection('attendance_sessions').get();
-        const percentage = totalSessions.size > 0 
-            ? ((attendanceSnapshot.size / totalSessions.size) * 100).toFixed(1)
-            : 0;
-        
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${student.roll || 'N/A'}</td>
-            <td>${student.name || 'N/A'}</td>
-            <td>${student.section || 'N/A'}</td>
-            <td>${student.email || 'N/A'}</td>
-            <td>${percentage}%</td>
-            <td>
-                <button class="btn btn-sm btn-danger" onclick="disableStudent('${doc.id}')">
-                    <i class="fas fa-ban"></i> Disable
-                </button>
-            </td>
-        `;
-        tbody.appendChild(row);
+
+        const tbody = document.getElementById('studentsTableBody');
+        tbody.innerHTML = '';
+
+        students.forEach(student => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${student.rollNumber || 'N/A'}</td>
+                <td>${student.name || 'N/A'}</td>
+                <td>${student.section || 'N/A'}</td>
+                <td>${student.email || 'N/A'}</td>
+                <td>0%</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="disableStudent('${student._id}')">
+                        <i class="fas fa-ban"></i> Disable
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    } catch (error) {
+        console.error('Error filtering students:', error);
     }
 }
 
-// Approve teacher
+// Approve teacher - Using API
 async function approveTeacher(approvalId, userId) {
     try {
         showLoading();
         
-        await db.collection('users').doc(userId).update({
-            role: 'teacher',
-            approvedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        await db.collection('teacher_approvals').doc(approvalId).update({
-            status: 'approved',
-            approvedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        await apiRequest(`/admin/approve-teacher/${approvalId}`, { method: 'PUT' });
 
         showToast('Teacher approved successfully!', 'success');
         
-        // Reload all sections
         await loadDashboardStats();
         await loadPendingApprovals();
         await loadTeachers();
@@ -457,15 +399,12 @@ async function approveTeacher(approvalId, userId) {
     }
 }
 
-// Reject teacher
+// Reject teacher - Using API
 async function rejectTeacher(approvalId) {
     try {
         showLoading();
         
-        await db.collection('teacher_approvals').doc(approvalId).update({
-            status: 'rejected',
-            rejectedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        await apiRequest(`/admin/reject-teacher/${approvalId}`, { method: 'PUT' });
 
         showToast('Teacher request rejected', 'info');
         
@@ -480,16 +419,14 @@ async function rejectTeacher(approvalId) {
     }
 }
 
-// Disable teacher
+// Disable teacher - Using API
 async function disableTeacher(userId) {
     if (!confirm('Are you sure you want to disable this teacher?')) return;
     
     try {
         showLoading();
         
-        await db.collection('users').doc(userId).update({
-            role: 'disabled_teacher'
-        });
+        await apiRequest(`/admin/disable-user/${userId}`, { method: 'PUT' });
         
         showToast('Teacher disabled', 'info');
         await loadTeachers();
@@ -503,16 +440,14 @@ async function disableTeacher(userId) {
     }
 }
 
-// Disable student
+// Disable student - Using API
 async function disableStudent(userId) {
     if (!confirm('Are you sure you want to disable this student?')) return;
     
     try {
         showLoading();
         
-        await db.collection('users').doc(userId).update({
-            role: 'disabled_student'
-        });
+        await apiRequest(`/admin/disable-user/${userId}`, { method: 'PUT' });
         
         showToast('Student disabled', 'info');
         await loadStudents();
