@@ -266,31 +266,6 @@
         </div>
     </div>
 
-    <!-- Manage Students Section -->
-    <div id="studentsSection" class="section">
-        <h3>Manage Students</h3>
-        <div class="filters">
-            <input type="text" id="searchStudent" placeholder="Search student..." onkeyup="filterStudents()">
-        </div>
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Roll No</th>
-                        <th>Name</th>
-                        <th>Section</th>
-                        <th>Email</th>
-                        <th>Attendance %</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="studentsTableBody">
-                    <tr><td colspan="6" style="text-align: center;">Loading students...</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
     <!-- Selfie Capture Modal -->
     <div id="selfieModal" class="modal">
         <div class="modal-content">
@@ -315,23 +290,18 @@
         </div>
     </div>
 
-            <!-- Toast Container -->
+    <!-- Toast Container -->
     <div id="toastContainer" class="toast-container"></div>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
-    
+    <!-- ✅ REMOVED ALL FIREBASE SCRIPTS - Using only backend API -->
     <!-- Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     
     <!-- Your JS files -->
-    <script src="js/firebase-config.js"></script>
+    <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/qr-scanner.js"></script>
     <script src="js/student.js"></script>
     <script src="js/app.js"></script>
 </body>
