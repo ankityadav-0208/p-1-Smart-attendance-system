@@ -3,6 +3,36 @@ let currentSession = null;
 let qrRefreshInterval = null;
 let chart = null;
 
+// API Base URL
+const API_BASE_URL = 'https://p-1-smart-attendance-system-02.onrender.com/api';
+
+// Helper function for API calls with auth token
+async function apiRequest(endpoint, options = {}) {
+    const token = localStorage.getItem('token');
+    
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+    
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+        throw new Error(data.message || 'API request failed');
+    }
+    
+    return data;
+}
+
 // Load teacher data on page load
 document.addEventListener('DOMContentLoaded', async () => {
     await loadTeacherData();
@@ -53,48 +83,40 @@ function showSection(section) {
     };
     document.getElementById('pageTitle').textContent = titles[section];
     
-    // Load section-specific data
     if (section === 'attendance') loadAttendanceRecords();
     if (section === 'students') loadStudents();
     if (section === 'reports') loadSectionsForReport();
 }
 
-// Load dashboard statistics
+// Load dashboard statistics - Using API
 async function loadDashboardStats() {
     try {
-        // Get total students
-        const studentsSnapshot = await db.collection('users')
-            .where('role', '==', 'student')
-            .get();
-        document.getElementById('totalStudents').textContent = studentsSnapshot.size;
+        // Get students list
+        const studentsResponse = await apiRequest('/teacher/students');
+        const students = studentsResponse.data || [];
+        document.getElementById('totalStudents').textContent = students.length;
 
         // Get today's attendance
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
         
-        const attendanceSnapshot = await db.collection('attendance_records')
-            .where('timestamp', '>=', today)
-            .get();
+        const attendanceResponse = await apiRequest(`/teacher/attendance-records?startDate=${today.toISOString()}&endDate=${tomorrow.toISOString()}`);
+        const todayRecords = attendanceResponse.data || [];
         
-        const uniqueStudents = new Set();
-        attendanceSnapshot.forEach(doc => {
-            uniqueStudents.add(doc.data().studentId);
-        });
+        const uniqueStudents = new Set(todayRecords.map(r => r.studentId?._id || r.studentId));
         document.getElementById('todayAttendance').textContent = uniqueStudents.size;
 
-        // Calculate average attendance
-        if (studentsSnapshot.size > 0) {
-            const avg = (uniqueStudents.size / studentsSnapshot.size) * 100;
+        if (students.length > 0) {
+            const avg = (uniqueStudents.size / students.length) * 100;
             document.getElementById('avgAttendance').textContent = avg.toFixed(1) + '%';
         }
 
         // Get active sessions
-        const sessionsSnapshot = await db.collection('attendance_sessions')
-            .where('active', '==', true)
-            .get();
-        document.getElementById('activeSessions').textContent = sessionsSnapshot.size;
+        const sessionsResponse = await apiRequest('/teacher/active-sessions');
+        document.getElementById('activeSessions').textContent = (sessionsResponse.data || []).length;
 
-        // Load chart data
         loadAttendanceChart();
     } catch (error) {
         console.error('Error loading stats:', error);
@@ -102,7 +124,7 @@ async function loadDashboardStats() {
     }
 }
 
-// Load attendance chart
+// Load attendance chart - Using API
 async function loadAttendanceChart() {
     const ctx = document.getElementById('attendanceChart').getContext('2d');
     
@@ -110,10 +132,8 @@ async function loadAttendanceChart() {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 7);
 
-    const recordsSnapshot = await db.collection('attendance_records')
-        .where('timestamp', '>=', startDate)
-        .where('timestamp', '<=', endDate)
-        .get();
+    const response = await apiRequest(`/teacher/attendance-records?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`);
+    const records = response.data || [];
 
     const last7Days = [];
     const dailyCount = {};
@@ -126,8 +146,8 @@ async function loadAttendanceChart() {
         dailyCount[dateStr] = 0;
     }
 
-    recordsSnapshot.forEach(doc => {
-        const date = doc.data().timestamp.toDate();
+    records.forEach(record => {
+        const date = new Date(record.timestamp);
         const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         if (dailyCount.hasOwnProperty(dateStr)) {
             dailyCount[dateStr]++;
@@ -154,48 +174,52 @@ async function loadAttendanceChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            }
+            animation: { duration: 0 },
+            plugins: { legend: { display: false } }
         }
     });
 }
 
-// Start attendance session
+// Start attendance session - Using API
 async function startAttendance() {
     try {
         const user = JSON.parse(sessionStorage.getItem('currentUser'));
         
-        const sessionData = {
-            createdBy: user.uid,
-            startTime: firebase.firestore.FieldValue.serverTimestamp(),
-            endTime: null,
-            active: true,
-            sessionToken: generateSessionToken()
+        // Get classroom location from user or default
+        const classroomLocation = {
+            latitude: 29.171743,
+            longitude: 75.735818
         };
+        
+        const response = await apiRequest('/teacher/start-session', {
+            method: 'POST',
+            body: JSON.stringify({ 
+                classroomLocation,
+                allowedRadius: 1000
+            })
+        });
 
-        const sessionRef = await db.collection('attendance_sessions').add(sessionData);
+        const sessionData = response.data;
         currentSession = {
-            id: sessionRef.id,
-            ...sessionData
+            id: sessionData.sessionId,
+            sessionToken: sessionData.sessionToken,
+            expiresAt: sessionData.expiresAt
         };
 
-        generateQRCode(sessionRef.id, sessionData.sessionToken);
+        generateQRCode(sessionData.sessionId, sessionData.sessionToken);
         
         document.getElementById('stopBtn').disabled = false;
         document.querySelector('button[onclick="startAttendance()"]').disabled = true;
         
         document.getElementById('qrContainer').classList.remove('hidden');
-        document.getElementById('sessionId').textContent = sessionRef.id;
+        document.getElementById('sessionId').textContent = sessionData.sessionId;
         
         startQRTimer();
         
         showToast('Attendance session started', 'success');
     } catch (error) {
         console.error('Error starting session:', error);
-        showToast('Failed to start session', 'error');
+        showToast('Failed to start session: ' + error.message, 'error');
     }
 }
 
@@ -214,7 +238,7 @@ function generateQRCode(sessionId, token) {
     new QRCode(qrContainer, {
         text: JSON.stringify(qrData),
         width: 256,
-        height: 256,
+        height:256,
         colorDark: '#1e3c72',
         colorLight: '#ffffff',
         correctLevel: QRCode.CorrectLevel.H
@@ -242,10 +266,6 @@ function startQRTimer() {
         if (timeLeft % 10 === 0 && currentSession) {
             currentSession.sessionToken = generateSessionToken();
             generateQRCode(currentSession.id, currentSession.sessionToken);
-            
-            db.collection('attendance_sessions').doc(currentSession.id).update({
-                sessionToken: currentSession.sessionToken
-            });
         }
         
         if (timeLeft <= 0) {
@@ -254,14 +274,11 @@ function startQRTimer() {
     }, 1000);
 }
 
-// Stop attendance session
+// Stop attendance session - Using API
 async function stopAttendance() {
     try {
         if (currentSession) {
-            await db.collection('attendance_sessions').doc(currentSession.id).update({
-                active: false,
-                endTime: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            await apiRequest(`/teacher/stop-session/${currentSession.id}`, { method: 'PUT' });
         }
         
         if (qrRefreshInterval) {
@@ -282,33 +299,29 @@ async function stopAttendance() {
     }
 }
 
-// Load attendance records
+// Load attendance records - Using API
 async function loadAttendanceRecords() {
     try {
-        const recordsSnapshot = await db.collection('attendance_records')
-            .orderBy('timestamp', 'desc')
-            .limit(50)
-            .get();
+        const response = await apiRequest('/teacher/attendance-records');
+        const records = response.data || [];
 
         const tbody = document.getElementById('attendanceTableBody');
         tbody.innerHTML = '';
 
-        for (const doc of recordsSnapshot) {
-            const record = doc.data();
+        for (const record of records.slice(0, 50)) {
+            const student = record.studentId || {};
+            const date = new Date(record.timestamp);
             
-            const studentDoc = await db.collection('users').doc(record.studentId).get();
-            const studentData = studentDoc.data();
-
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${formatDate(record.timestamp)}</td>
-                <td>${studentData?.name || 'Unknown'}</td>
-                <td>${studentData?.roll || 'N/A'}</td>
-                <td>${studentData?.section || 'N/A'}</td>
+                <td>${date.toLocaleString()}</td>
+                <td>${student.name || 'Unknown'}</td>
+                <td>${student.rollNumber || 'N/A'}</td>
+                <td>${student.section || 'N/A'}</td>
                 <td><span class="badge badge-success">Present</span></td>
                 <td>
-                    ${record.selfieURL ? 
-                        `<button class="btn btn-sm btn-primary" onclick="viewSelfie('${record.selfieURL}')">View</button>` : 
+                    ${record.selfieUrl ? 
+                        `<button class="btn btn-sm btn-primary" onclick="viewSelfie('${record.selfieUrl}')">View</button>` : 
                         'No selfie'}
                 </td>
             `;
@@ -320,44 +333,34 @@ async function loadAttendanceRecords() {
     }
 }
 
-// Load students
+// Load students - Using API
 async function loadStudents() {
     try {
-        const studentsSnapshot = await db.collection('users')
-            .where('role', '==', 'student')
-            .orderBy('roll')
-            .get();
+        const response = await apiRequest('/teacher/students');
+        const students = response.data || [];
 
         const tbody = document.getElementById('studentsTableBody');
         tbody.innerHTML = '';
 
-        for (const doc of studentsSnapshot) {
-            const student = doc.data();
+        for (const student of students) {
+            // Get attendance percentage
+            const attendanceResponse = await apiRequest(`/teacher/attendance-records?studentId=${student._id}`);
+            const attendanceRecords = attendanceResponse.data || [];
             
-            const attendanceSnapshot = await db.collection('attendance_records')
-                .where('studentId', '==', doc.id)
-                .get();
+            const totalSessionsResponse = await apiRequest('/teacher/attendance-records');
+            const totalSessions = totalSessionsResponse.data?.length || 0;
             
-            const totalSessions = await db.collection('attendance_sessions').get();
-            const percentage = totalSessions.size > 0 
-                ? ((attendanceSnapshot.size / totalSessions.size) * 100).toFixed(1)
+            const percentage = totalSessions > 0 
+                ? ((attendanceRecords.length / totalSessions) * 100).toFixed(1)
                 : 0;
-
-            const lastAttendanceSnapshot = await db.collection('attendance_records')
-                .where('studentId', '==', doc.id)
-                .orderBy('timestamp', 'desc')
-                .limit(1)
-                .get();
-            
-            const lastAttendance = lastAttendanceSnapshot.docs[0]?.data().timestamp;
 
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${student.roll || 'N/A'}</td>
+                <td>${student.rollNumber || 'N/A'}</td>
                 <td>${student.name}</td>
                 <td>${student.section || 'N/A'}</td>
                 <td>${percentage}%</td>
-                <td>${lastAttendance ? formatDate(lastAttendance) : 'Never'}</td>
+                <td>Never</td>
             `;
             tbody.appendChild(row);
         }
@@ -371,27 +374,30 @@ async function loadStudents() {
 
 // Load sections for filter
 async function loadSections() {
-    const studentsSnapshot = await db.collection('users')
-        .where('role', '==', 'student')
-        .get();
+    try {
+        const response = await apiRequest('/teacher/students');
+        const students = response.data || [];
 
-    const sections = new Set();
-    studentsSnapshot.forEach(doc => {
-        if (doc.data().section) {
-            sections.add(doc.data().section);
-        }
-    });
+        const sections = new Set();
+        students.forEach(student => {
+            if (student.section) {
+                sections.add(student.section);
+            }
+        });
 
-    const sectionFilter = document.getElementById('sectionFilter');
-    const reportSection = document.getElementById('reportSection');
-    
-    sections.forEach(section => {
-        const option = document.createElement('option');
-        option.value = section;
-        option.textContent = section;
-        if (sectionFilter) sectionFilter.appendChild(option.cloneNode(true));
-        if (reportSection) reportSection.appendChild(option.cloneNode(true));
-    });
+        const sectionFilter = document.getElementById('sectionFilter');
+        const reportSection = document.getElementById('reportSection');
+        
+        sections.forEach(section => {
+            const option = document.createElement('option');
+            option.value = section;
+            option.textContent = section;
+            if (sectionFilter) sectionFilter.appendChild(option.cloneNode(true));
+            if (reportSection) reportSection.appendChild(option.cloneNode(true));
+        });
+    } catch (error) {
+        console.error('Error loading sections:', error);
+    }
 }
 
 // Filter students
@@ -399,127 +405,101 @@ async function filterStudents() {
     const section = document.getElementById('sectionFilter').value;
     const search = document.getElementById('searchStudent').value.toLowerCase();
 
-    const studentsSnapshot = await db.collection('users')
-        .where('role', '==', 'student')
-        .get();
-
-    const tbody = document.getElementById('studentsTableBody');
-    tbody.innerHTML = '';
-
-    for (const doc of studentsSnapshot) {
-        const student = doc.data();
+    try {
+        const response = await apiRequest('/teacher/students');
+        let students = response.data || [];
         
-        if (section && student.section !== section) continue;
-        if (search && !student.name.toLowerCase().includes(search) && 
-            !student.roll?.toLowerCase().includes(search)) continue;
+        students = students.filter(student => {
+            if (section && student.section !== section) return false;
+            if (search && !student.name.toLowerCase().includes(search) && 
+                !student.rollNumber?.toLowerCase().includes(search)) return false;
+            return true;
+        });
 
-        const attendanceSnapshot = await db.collection('attendance_records')
-            .where('studentId', '==', doc.id)
-            .get();
-        
-        const totalSessions = await db.collection('attendance_sessions').get();
-        const percentage = totalSessions.size > 0 
-            ? ((attendanceSnapshot.size / totalSessions.size) * 100).toFixed(1)
-            : 0;
+        const tbody = document.getElementById('studentsTableBody');
+        tbody.innerHTML = '';
 
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${student.roll || 'N/A'}</td>
-            <td>${student.name}</td>
-            <td>${student.section || 'N/A'}</td>
-            <td>${percentage}%</td>
-            <td>N/A</td>
-        `;
-        tbody.appendChild(row);
+        for (const student of students) {
+            const attendanceResponse = await apiRequest(`/teacher/attendance-records?studentId=${student._id}`);
+            const attendanceRecords = attendanceResponse.data || [];
+            
+            const totalSessionsResponse = await apiRequest('/teacher/attendance-records');
+            const totalSessions = totalSessionsResponse.data?.length || 0;
+            
+            const percentage = totalSessions > 0 
+                ? ((attendanceRecords.length / totalSessions) * 100).toFixed(1)
+                : 0;
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${student.rollNumber || 'N/A'}</td>
+                <td>${student.name}</td>
+                <td>${student.section || 'N/A'}</td>
+                <td>${percentage}%</td>
+                <td>N/A</td>
+            `;
+            tbody.appendChild(row);
+        }
+    } catch (error) {
+        console.error('Error filtering students:', error);
     }
 }
 
-// Generate report
+// Generate report - Using API
 async function generateReport() {
     const month = parseInt(document.getElementById('reportMonth').value);
     const section = document.getElementById('reportSection').value;
     const year = new Date().getFullYear();
 
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
+    try {
+        const response = await apiRequest(`/teacher/report?month=${month}&year=${year}&section=${section}`);
+        const reportData = response.data || [];
 
-    const recordsSnapshot = await db.collection('attendance_records')
-        .where('timestamp', '>=', startDate)
-        .where('timestamp', '<=', endDate)
-        .get();
+        const labels = reportData.map(s => s.name);
+        const data = reportData.map(s => parseFloat(s.percentage));
 
-    const studentAttendance = {};
-    recordsSnapshot.forEach(doc => {
-        const record = doc.data();
-        studentAttendance[record.studentId] = (studentAttendance[record.studentId] || 0) + 1;
-    });
-
-    const sessionsSnapshot = await db.collection('attendance_sessions')
-        .where('startTime', '>=', startDate)
-        .where('startTime', '<=', endDate)
-        .get();
-    
-    const totalSessions = sessionsSnapshot.size;
-
-    let studentsQuery = db.collection('users').where('role', '==', 'student');
-    if (section) {
-        studentsQuery = studentsQuery.where('section', '==', section);
-    }
-    
-    const studentsSnapshot = await studentsQuery.get();
-
-    const labels = [];
-    const data = [];
-
-    studentsSnapshot.forEach(doc => {
-        const student = doc.data();
-        const attended = studentAttendance[doc.id] || 0;
-        const percentage = totalSessions > 0 ? ((attended / totalSessions) * 100).toFixed(1) : 0;
+        const ctx = document.getElementById('reportChart').getContext('2d');
         
-        labels.push(student.name);
-        data.push(percentage);
-    });
-
-    const ctx = document.getElementById('reportChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Attendance Percentage',
-                data: data,
-                backgroundColor: '#4a90e2'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 100
-                }
+        if (window.reportChart) window.reportChart.destroy();
+        
+        window.reportChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Attendance Percentage',
+                    data: data,
+                    backgroundColor: '#4a90e2'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 0 },
+                scales: { y: { beginAtZero: true, max: 100 } }
             }
-        }
-    });
+        });
+        
+        showToast('Report generated', 'success');
+    } catch (error) {
+        console.error('Error generating report:', error);
+        showToast('Error generating report', 'error');
+    }
 }
 
-// Download CSV
+// Download CSV - Using API
 async function downloadCSV() {
     try {
-        const recordsSnapshot = await db.collection('attendance_records')
-            .orderBy('timestamp', 'desc')
-            .get();
+        const response = await apiRequest('/teacher/attendance-records');
+        const records = response.data || [];
 
         let csv = 'Date,Student Name,Roll Number,Section,Session ID\n';
 
-        for (const doc of recordsSnapshot) {
-            const record = doc.data();
+        for (const record of records) {
+            const student = record.studentId || {};
+            const date = new Date(record.timestamp);
             
-            const studentDoc = await db.collection('users').doc(record.studentId).get();
-            const student = studentDoc.data();
-
-            csv += `${formatDate(record.timestamp)},${student?.name || 'Unknown'},${student?.roll || 'N/A'},${student?.section || 'N/A'},${record.sessionId}\n`;
+            csv += `${date.toLocaleString()},${student.name || 'Unknown'},${student.rollNumber || 'N/A'},${student.section || 'N/A'},${record.sessionId}\n`;
         }
 
         const blob = new Blob([csv], { type: 'text/csv' });
@@ -545,17 +525,28 @@ function viewSelfie(url) {
     }
 }
 
-// Change password
+// Change password - Using API
 async function changePassword() {
+    const currentPassword = prompt('Enter current password:');
+    if (!currentPassword) return;
+    
     const newPassword = prompt('Enter new password (minimum 6 characters):');
     if (newPassword && newPassword.length >= 6) {
         try {
-            const user = auth.currentUser;
-            await user.updatePassword(newPassword);
+            showLoading();
+            await apiRequest('/users/change-password', {
+                method: 'PUT',
+                body: JSON.stringify({ 
+                    currentPassword: currentPassword,
+                    newPassword: newPassword 
+                })
+            });
             showToast('Password updated successfully', 'success');
         } catch (error) {
             console.error('Password update error:', error);
             showToast('Error updating password', 'error');
+        } finally {
+            hideLoading();
         }
     } else if (newPassword) {
         showToast('Password must be at least 6 characters', 'error');
@@ -565,13 +556,30 @@ async function changePassword() {
 // Format date
 function formatDate(timestamp) {
     if (!timestamp) return 'N/A';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const date = new Date(timestamp);
     return date.toLocaleString();
 }
 
 // Load sections for report
 function loadSectionsForReport() {
     // Already handled in loadSections
+}
+
+// Loading functions
+function showLoading() {
+    let loader = document.getElementById('teacherLoader');
+    if (!loader) {
+        loader = document.createElement('div');
+        loader.id = 'teacherLoader';
+        loader.className = 'global-loader';
+        loader.innerHTML = '<div class="spinner"></div>';
+        document.body.appendChild(loader);
+    }
+}
+
+function hideLoading() {
+    const loader = document.getElementById('teacherLoader');
+    if (loader) loader.remove();
 }
 
 // Export functions
