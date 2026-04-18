@@ -89,7 +89,7 @@ function showSection(section) {
     document.getElementById('pageTitle').textContent = titles[section];
     
     if (section === 'history') loadAttendanceHistory();
-    if (section === 'analytics') loadAnalytics();
+    // if (section === 'analytics') loadAnalytics();
 }
 
 // Load dashboard statistics - Using API
@@ -274,92 +274,92 @@ async function filterHistory() {
 }
 
 // Load analytics - Using API
-async function loadAnalytics() {
-    try {
-        const response = await apiRequest('/student/stats');
-        const stats = response.data;
+// async function loadAnalytics() {
+//     try {
+//         const response = await apiRequest('/student/stats');
+//         const stats = response.data;
         
-        document.getElementById('presentCount').textContent = stats.attended || 0;
-        const totalClasses = stats.total || 0;
-        const totalPresent = stats.attended || 0;
-        const totalAbsent = totalClasses - totalPresent;
-        document.getElementById('absentCount').textContent = totalAbsent;
-        document.getElementById('totalPercentage').textContent = (stats.percentage || 0) + '%';
+//         document.getElementById('presentCount').textContent = stats.attended || 0;
+//         const totalClasses = stats.total || 0;
+//         const totalPresent = stats.attended || 0;
+//         const totalAbsent = totalClasses - totalPresent;
+//         document.getElementById('absentCount').textContent = totalAbsent;
+//         document.getElementById('totalPercentage').textContent = (stats.percentage || 0) + '%';
         
-        const requiredToMaintain = Math.max(0, Math.ceil(0.75 * totalClasses - totalPresent));
-        document.getElementById('requiredAttendance').textContent = requiredToMaintain;
+//         const requiredToMaintain = Math.max(0, Math.ceil(0.75 * totalClasses - totalPresent));
+//         document.getElementById('requiredAttendance').textContent = requiredToMaintain;
 
-        // Destroy old charts before creating new ones
-        if (weeklyChart) {
-            weeklyChart.destroy();
-            weeklyChart = null;
-        }
-        if (monthlyChart) {
-            monthlyChart.destroy();
-            monthlyChart = null;
-        }
+//         // Destroy old charts before creating new ones
+//         if (weeklyChart) {
+//             weeklyChart.destroy();
+//             weeklyChart = null;
+//         }
+//         if (monthlyChart) {
+//             monthlyChart.destroy();
+//             monthlyChart = null;
+//         }
 
-        await loadWeeklyChart();
-        await loadMonthlyComparison();
+//         await loadWeeklyChart();
+//         await loadMonthlyComparison();
         
-    } catch (error) {
-        console.error('Error loading analytics:', error);
-    }
-}
+//     } catch (error) {
+//         console.error('Error loading analytics:', error);
+//     }
+// }
 
 // Load weekly chart - FIXED
-async function loadWeeklyChart() {
-    const canvas = document.getElementById('weeklyChart');
+// async function loadWeeklyChart() {
+//     const canvas = document.getElementById('weeklyChart');
     
-    // Check if canvas exists
-    if (!canvas) {
-        console.error('Weekly chart canvas not found');
-        return;
-    }
+//     // Check if canvas exists
+//     if (!canvas) {
+//         console.error('Weekly chart canvas not found');
+//         return;
+//     }
     
-    const ctx = canvas.getContext('2d');
+//     const ctx = canvas.getContext('2d');
     
-    const response = await apiRequest('/student/history');
-    const records = response.data;
+//     const response = await apiRequest('/student/history');
+//     const records = response.data;
     
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const weeklyData = [0, 0, 0, 0, 0, 0, 0];
+//     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+//     const weeklyData = [0, 0, 0, 0, 0, 0, 0];
     
-    records.forEach(record => {
-        const date = new Date(record.timestamp);
-        const day = date.getDay();
-        weeklyData[day]++;
-    });
+//     records.forEach(record => {
+//         const date = new Date(record.timestamp);
+//         const day = date.getDay();
+//         weeklyData[day]++;
+//     });
 
-    // Create new chart
-    weeklyChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: days,
-            datasets: [{
-                label: 'Attendance by Day',
-                data: weeklyData,
-                borderColor: '#4a90e2',
-                backgroundColor: 'rgba(74, 144, 226, 0.1)',
-                tension: 0.4,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: {
-                duration: 0
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top'
-                }
-            }
-        }
-    });
-}
+//     // Create new chart
+//     weeklyChart = new Chart(ctx, {
+//         type: 'line',
+//         data: {
+//             labels: days,
+//             datasets: [{
+//                 label: 'Attendance by Day',
+//                 data: weeklyData,
+//                 borderColor: '#4a90e2',
+//                 backgroundColor: 'rgba(74, 144, 226, 0.1)',
+//                 tension: 0.4,
+//                 fill: true
+//             }]
+//         },
+//         options: {
+//             responsive: true,
+//             maintainAspectRatio: false,
+//             animation: {
+//                 duration: 0
+//             },
+//             plugins: {
+//                 legend: {
+//                     display: true,
+//                     position: 'top'
+//                 }
+//             }
+//         }
+//     });
+// }
 
 // Load monthly comparison - FIXED
 async function loadMonthlyComparison() {

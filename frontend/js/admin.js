@@ -87,7 +87,7 @@ function showSection(section) {
         teachers: 'Teacher Management',
         students: 'Student Management',
         approvals: 'Pending Approvals',
-        reports: 'Reports',
+        // reports: 'Reports',
         settings: 'Settings'
     };
     document.getElementById('pageTitle').textContent = titles[section] || 'Overview';
@@ -469,14 +469,14 @@ async function disableStudent(userId) {
 }
 
 // Generate report
-async function generateReport() {
-    showToast('Report generation coming soon', 'info');
-}
+// async function generateReport() {
+//     showToast('Report generation coming soon', 'info');
+// }
 
-// Download CSV
-async function downloadCSV() {
-    showToast('CSV download coming soon', 'info');
-}
+// // Download CSV
+// async function downloadCSV() {
+//     showToast('CSV download coming soon', 'info');
+// }
 
 // Show loading indicator
 function showLoading() {
@@ -505,6 +505,6 @@ window.approveTeacher = approveTeacher;
 window.rejectTeacher = rejectTeacher;
 window.disableTeacher = disableTeacher;
 window.disableStudent = disableStudent;
-window.generateReport = generateReport;
-window.downloadCSV = downloadCSV;
+// window.generateReport = generateReport;
+// window.downloadCSV = downloadCSV;
 window.toggleDarkMode = toggleDarkMode;

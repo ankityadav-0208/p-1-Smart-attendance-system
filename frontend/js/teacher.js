@@ -76,7 +76,7 @@ function showSection(section) {
         overview: 'Overview',
         attendance: 'Attendance Records',
         students: 'My Students',
-        reports: 'Reports',
+        // reports: 'Reports',
         settings: 'Settings'
     };
     document.getElementById('pageTitle').textContent = titles[section];
@@ -442,82 +442,82 @@ async function filterStudents() {
 }
 
 // Store report chart instance globally
-let reportChart = null;
+// let reportChart = null;
 
 // Generate report - Using API (FIXED - no infinite loop)
-async function generateReport() {
-    const month = parseInt(document.getElementById('reportMonth').value);
-    const section = document.getElementById('reportSection').value;
-    const year = new Date().getFullYear();
+// async function generateReport() {
+//     const month = parseInt(document.getElementById('reportMonth').value);
+//     const section = document.getElementById('reportSection').value;
+//     const year = new Date().getFullYear();
 
-    try {
-        const response = await apiRequest(`/teacher/report?month=${month}&year=${year}&section=${section}`);
-        const reportData = response.data || [];
+//     try {
+//         const response = await apiRequest(`/teacher/report?month=${month}&year=${year}&section=${section}`);
+//         const reportData = response.data || [];
 
-        const labels = reportData.map(s => s.name);
-        const data = reportData.map(s => parseFloat(s.percentage));
+//         const labels = reportData.map(s => s.name);
+//         const data = reportData.map(s => parseFloat(s.percentage));
 
-        const ctx = document.getElementById('reportChart').getContext('2d');
+//         const ctx = document.getElementById('reportChart').getContext('2d');
         
-        // Destroy existing chart if it exists
-        if (reportChart) {
-            reportChart.destroy();
-            reportChart = null;
-        }
+//         // Destroy existing chart if it exists
+//         if (reportChart) {
+//             reportChart.destroy();
+//             reportChart = null;
+//         }
         
-        reportChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Attendance Percentage',
-                    data: data,
-                    backgroundColor: '#4a90e2'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: { duration: 0 },  // Disable animation
-                scales: { y: { beginAtZero: true, max: 100 } }
-            }
-        });
+//         reportChart = new Chart(ctx, {
+//             type: 'bar',
+//             data: {
+//                 labels: labels,
+//                 datasets: [{
+//                     label: 'Attendance Percentage',
+//                     data: data,
+//                     backgroundColor: '#4a90e2'
+//                 }]
+//             },
+//             options: {
+//                 responsive: true,
+//                 maintainAspectRatio: false,
+//                 animation: { duration: 0 },  // Disable animation
+//                 scales: { y: { beginAtZero: true, max: 100 } }
+//             }
+//         });
         
-        showToast('Report generated', 'success');
-    } catch (error) {
-        console.error('Error generating report:', error);
-        showToast('Error generating report', 'error');
-    }
-}
+//         showToast('Report generated', 'success');
+//     } catch (error) {
+//         console.error('Error generating report:', error);
+//         showToast('Error generating report', 'error');
+//     }
+// }
 
 // Download CSV - Using API
-async function downloadCSV() {
-    try {
-        const response = await apiRequest('/teacher/attendance-records');
-        const records = response.data || [];
+// async function downloadCSV() {
+//     try {
+//         const response = await apiRequest('/teacher/attendance-records');
+//         const records = response.data || [];
 
-        let csv = 'Date,Student Name,Roll Number,Section,Session ID\n';
+//         let csv = 'Date,Student Name,Roll Number,Section,Session ID\n';
 
-        for (const record of records) {
-            const student = record.studentId || {};
-            const date = new Date(record.timestamp);
+//         for (const record of records) {
+//             const student = record.studentId || {};
+//             const date = new Date(record.timestamp);
             
-            csv += `${date.toLocaleString()},${student.name || 'Unknown'},${student.rollNumber || 'N/A'},${student.section || 'N/A'},${record.sessionId}\n`;
-        }
+//             csv += `${date.toLocaleString()},${student.name || 'Unknown'},${student.rollNumber || 'N/A'},${student.section || 'N/A'},${record.sessionId}\n`;
+//         }
 
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `attendance_report_${new Date().toISOString().split('T')[0]}.csv`;
-        a.click();
+//         const blob = new Blob([csv], { type: 'text/csv' });
+//         const url = window.URL.createObjectURL(blob);
+//         const a = document.createElement('a');
+//         a.href = url;
+//         a.download = `attendance_report_${new Date().toISOString().split('T')[0]}.csv`;
+//         a.click();
         
-        showToast('CSV downloaded successfully', 'success');
-    } catch (error) {
-        console.error('Error downloading CSV:', error);
-        showToast('Error downloading CSV', 'error');
-    }
-}
+//         showToast('CSV downloaded successfully', 'success');
+//     } catch (error) {
+//         console.error('Error downloading CSV:', error);
+//         showToast('Error downloading CSV', 'error');
+//     }
+// }
 
 // View selfie
 function viewSelfie(url) {
