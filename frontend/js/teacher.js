@@ -2,6 +2,7 @@
 let currentSession = null;
 let qrRefreshInterval = null;
 let chart = null;
+let reportChart = null;  // Add this line
 
 // Helper function for API calls with auth token
 async function apiRequest(endpoint, options = {}) {
@@ -441,7 +442,10 @@ async function filterStudents() {
     }
 }
 
-// Generate report - Using API
+// Store report chart instance globally
+let reportChart = null;
+
+// Generate report - Using API (FIXED - no infinite loop)
 async function generateReport() {
     const month = parseInt(document.getElementById('reportMonth').value);
     const section = document.getElementById('reportSection').value;
@@ -456,9 +460,13 @@ async function generateReport() {
 
         const ctx = document.getElementById('reportChart').getContext('2d');
         
-        if (window.reportChart) window.reportChart.destroy();
+        // Destroy existing chart if it exists
+        if (reportChart) {
+            reportChart.destroy();
+            reportChart = null;
+        }
         
-        window.reportChart = new Chart(ctx, {
+        reportChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: labels,
@@ -471,7 +479,7 @@ async function generateReport() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: { duration: 0 },
+                animation: { duration: 0 },  // Disable animation
                 scales: { y: { beginAtZero: true, max: 100 } }
             }
         });

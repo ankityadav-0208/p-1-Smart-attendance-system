@@ -268,6 +268,10 @@ async function filterHistory() {
     }
 }
 
+// Store chart instances globally to destroy them before recreating
+let weeklyChart = null;
+let monthlyChart = null;
+
 // Load analytics - Using API
 async function loadAnalytics() {
     try {
@@ -284,15 +288,25 @@ async function loadAnalytics() {
         const requiredToMaintain = Math.max(0, Math.ceil(0.75 * totalClasses - totalPresent));
         document.getElementById('requiredAttendance').textContent = requiredToMaintain;
 
-        loadWeeklyChart();
-        loadMonthlyComparison();
+        // Destroy old charts before creating new ones
+        if (weeklyChart) {
+            weeklyChart.destroy();
+            weeklyChart = null;
+        }
+        if (monthlyChart) {
+            monthlyChart.destroy();
+            monthlyChart = null;
+        }
+
+        await loadWeeklyChart();
+        await loadMonthlyComparison();
         
     } catch (error) {
         console.error('Error loading analytics:', error);
     }
 }
 
-// Load weekly chart
+// Load weekly chart - FIXED (no infinite loop)
 async function loadWeeklyChart() {
     const ctx = document.getElementById('weeklyChart').getContext('2d');
     
@@ -308,7 +322,8 @@ async function loadWeeklyChart() {
         weeklyData[day]++;
     });
 
-    new Chart(ctx, {
+    // Create new chart and store reference
+    weeklyChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: days,
@@ -324,12 +339,14 @@ async function loadWeeklyChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            animation: { duration: 0 }
+            animation: {
+                duration: 0  // Disable animation to prevent infinite loop
+            }
         }
     });
 }
 
-// Load monthly comparison
+// Load monthly comparison - FIXED
 async function loadMonthlyComparison() {
     const ctx = document.getElementById('monthlyComparisonChart').getContext('2d');
     
@@ -337,9 +354,8 @@ async function loadMonthlyComparison() {
     const monthlyData = new Array(12).fill(0);
     const monthlyTotal = new Array(12).fill(0);
 
-    // This would need separate API endpoints for monthly data
-    // For now, showing placeholder
-    new Chart(ctx, {
+    // Create new chart and store reference
+    monthlyChart = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: months,
@@ -352,7 +368,9 @@ async function loadMonthlyComparison() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            animation: { duration: 0 },
+            animation: {
+                duration: 0  // Disable animation to prevent infinite loop
+            },
             scales: { y: { beginAtZero: true, max: 100 } }
         }
     });
