@@ -2,7 +2,6 @@
 let currentSession = null;
 let qrRefreshInterval = null;
 let chart = null;
-let reportChart = null;  // Add this line
 
 // Helper function for API calls with auth token
 async function apiRequest(endpoint, options = {}) {

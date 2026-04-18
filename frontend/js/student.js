@@ -2,6 +2,8 @@
 let currentScanData = null;
 let selfieImage = null;
 let studentChart = null;
+let weeklyChart = null;
+let monthlyChart = null;
 
 // Helper function for API calls with auth token
 async function apiRequest(endpoint, options = {}) {
@@ -121,7 +123,10 @@ function loadStudentChart(dailyAttendance = {}) {
     const dates = Object.keys(dailyAttendance);
     const values = Object.values(dailyAttendance);
 
-    if (studentChart) studentChart.destroy();
+    if (studentChart) {
+        studentChart.destroy();
+        studentChart = null;
+    }
 
     studentChart = new Chart(ctx, {
         type: 'bar',
@@ -268,10 +273,6 @@ async function filterHistory() {
     }
 }
 
-// Store chart instances globally to destroy them before recreating
-let weeklyChart = null;
-let monthlyChart = null;
-
 // Load analytics - Using API
 async function loadAnalytics() {
     try {
@@ -306,9 +307,17 @@ async function loadAnalytics() {
     }
 }
 
-// Load weekly chart - FIXED (no infinite loop)
+// Load weekly chart - FIXED
 async function loadWeeklyChart() {
-    const ctx = document.getElementById('weeklyChart').getContext('2d');
+    const canvas = document.getElementById('weeklyChart');
+    
+    // Check if canvas exists
+    if (!canvas) {
+        console.error('Weekly chart canvas not found');
+        return;
+    }
+    
+    const ctx = canvas.getContext('2d');
     
     const response = await apiRequest('/student/history');
     const records = response.data;
@@ -322,7 +331,7 @@ async function loadWeeklyChart() {
         weeklyData[day]++;
     });
 
-    // Create new chart and store reference
+    // Create new chart
     weeklyChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -340,7 +349,13 @@ async function loadWeeklyChart() {
             responsive: true,
             maintainAspectRatio: false,
             animation: {
-                duration: 0  // Disable animation to prevent infinite loop
+                duration: 0
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
             }
         }
     });
@@ -348,30 +363,52 @@ async function loadWeeklyChart() {
 
 // Load monthly comparison - FIXED
 async function loadMonthlyComparison() {
-    const ctx = document.getElementById('monthlyComparisonChart').getContext('2d');
+    const canvas = document.getElementById('monthlyComparisonChart');
+    
+    // Check if canvas exists
+    if (!canvas) {
+        console.error('Monthly comparison chart canvas not found');
+        return;
+    }
+    
+    const ctx = canvas.getContext('2d');
     
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const monthlyData = new Array(12).fill(0);
-    const monthlyTotal = new Array(12).fill(0);
 
-    // Create new chart and store reference
+    // Create new chart
     monthlyChart = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: months,
             datasets: [{
-                label: 'Attendance %',
+                label: 'Attendance Count',
                 data: monthlyData,
-                backgroundColor: '#4a90e2'
+                backgroundColor: '#4a90e2',
+                borderRadius: 5
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             animation: {
-                duration: 0  // Disable animation to prevent infinite loop
+                duration: 0
             },
-            scales: { y: { beginAtZero: true, max: 100 } }
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1,
+                        precision: 0
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            }
         }
     });
 }
@@ -712,7 +749,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// ✅ EXPORT ALL FUNCTIONS TO WINDOW - THIS IS THE FIX!
+// ✅ EXPORT ALL FUNCTIONS TO WINDOW
 window.showSection = showSection;
 window.scanQR = scanQR;
 window.startQRScanner = startQRScanner;
