@@ -276,26 +276,23 @@
         </div>
     </div>
 
-    <!-- Selfie Capture Modal -->
-    <div id="selfieModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeSelfieModal()">&times;</span>
-            <h3>Capture Selfie</h3>
-            <div class="selfie-container">
-                <video id="selfieVideo" class="selfie-video" autoplay playsinline></video>
-                <canvas id="selfieCanvas" style="display:none;"></canvas>
-                <img id="selfiePreview" class="selfie-preview hidden">
-                <div class="selfie-controls">
-                    <button class="btn btn-primary" onclick="captureSelfie()" id="captureBtn">
-                        <i class="fas fa-camera"></i> Capture
-                    </button>
-                    <button class="btn btn-success" onclick="submitAttendance()" id="submitAttendanceBtn" disabled>
-                        <i class="fas fa-check"></i> Submit
-                    </button>
-                    <button class="btn btn-outline" onclick="retakeSelfie()" id="retakeBtn" style="display:none;">
-                        <i class="fas fa-redo"></i> Retake
-                    </button>
-                </div>
+    <!-- Confirmation Modal (instead of selfie) -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content glass-effect">
+            <span class="close" onclick="closeConfirmModal()">&times;</span>
+            <h3>Confirm Attendance</h3>
+            <p>Are you sure you want to mark your attendance?</p>
+            <div class="form-group">
+                <label>Your Location:</label>
+                <p id="locationStatus" style="font-size: 12px; color: #666;">Fetching location...</p>
+            </div>
+            <div class="selfie-controls">
+                <button class="btn btn-outline" onclick="closeConfirmModal()">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button class="btn btn-success" onclick="confirmAttendance()">
+                    <i class="fas fa-check"></i> Confirm Attendance
+                </button>
             </div>
         </div>
     </div>

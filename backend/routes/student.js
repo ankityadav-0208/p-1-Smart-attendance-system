@@ -96,6 +96,75 @@ router.post('/validate-session', async (req, res) => {
     }
 });
 
+// @desc    Submit attendance without selfie
+// @route   POST /api/student/mark-attendance-without-selfie
+router.post('/mark-attendance-without-selfie', async (req, res) => {
+    try {
+        const { sessionId, location, distance } = req.body;
+
+        if (!sessionId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Session ID is required'
+            });
+        }
+
+        // Get session
+        const session = await AttendanceSession.findById(sessionId);
+        if (!session || !session.isActive) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid or inactive session'
+            });
+        }
+
+        // Check if already marked
+        const existing = await AttendanceRecord.findOne({
+            studentId: req.user.id,
+            sessionId: session._id
+        });
+
+        if (existing) {
+            return res.status(400).json({
+                success: false,
+                message: 'Attendance already marked for this session'
+            });
+        }
+
+        // Check distance
+        if (distance > session.allowedRadius) {
+            return res.status(400).json({
+                success: false,
+                message: `You are ${Math.round(distance)} meters away. Maximum allowed distance is ${session.allowedRadius} meters.`
+            });
+        }
+
+        // Create attendance record without selfie
+        const record = await AttendanceRecord.create({
+            studentId: req.user.id,
+            sessionId: session._id,
+            location: location ? { ...location, distance } : null,
+            selfieUrl: '',  // Empty string for no selfie
+            deviceId: getDeviceId(req),
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent')
+        });
+
+        res.json({
+            success: true,
+            message: 'Attendance marked successfully',
+            data: record
+        });
+
+    } catch (error) {
+        console.error('Error in mark-attendance-without-selfie:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Server error'
+        });
+    }
+});
+
 // @desc    Submit attendance with selfie
 // @route   POST /api/student/mark-attendance
 router.post('/mark-attendance', upload.single('selfie'), async (req, res) => {

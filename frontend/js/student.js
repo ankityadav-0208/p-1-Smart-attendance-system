@@ -1,9 +1,6 @@
 // Student Dashboard Functions
 let currentScanData = null;
-let selfieImage = null;
 let studentChart = null;
-let weeklyChart = null;
-let monthlyChart = null;
 
 // Helper function for API calls with auth token
 async function apiRequest(endpoint, options = {}) {
@@ -18,12 +15,6 @@ async function apiRequest(endpoint, options = {}) {
         headers['Authorization'] = `Bearer ${token}`;
     }
     
-    // For FormData, remove Content-Type header
-    if (options.body && options.body instanceof FormData) {
-        delete headers['Content-Type'];
-    }
-    
-    // Use API.baseURL from the global API object (defined in api.js)
     const response = await fetch(`${API.baseURL}${endpoint}`, {
         ...options,
         headers
@@ -83,20 +74,16 @@ function showSection(section) {
     const titles = {
         overview: 'Overview',
         history: 'Attendance History',
-        analytics: 'Analytics',
         profile: 'Profile'
     };
     document.getElementById('pageTitle').textContent = titles[section];
     
     if (section === 'history') loadAttendanceHistory();
-    // if (section === 'analytics') loadAnalytics();
 }
 
 // Load dashboard statistics - Using API
 async function loadDashboardStats() {
     try {
-        const user = JSON.parse(sessionStorage.getItem('currentUser'));
-        
         const response = await apiRequest('/student/stats');
         const stats = response.data;
         
@@ -106,7 +93,6 @@ async function loadDashboardStats() {
 
         loadStudentChart(stats.dailyAttendance || {});
         
-        // For rank - we'll keep simple for now
         document.getElementById('studentRank').textContent = '-';
 
     } catch (error) {
@@ -119,16 +105,14 @@ async function loadDashboardStats() {
 function loadStudentChart(dailyAttendance = {}) {
     const ctx = document.getElementById('studentChart').getContext('2d');
     
-    // Get last 30 days
     const dates = Object.keys(dailyAttendance);
     const values = Object.values(dailyAttendance);
 
-    if (studentChart) {
-        studentChart.destroy();
-        studentChart = null;
+    if (window.studentChartInstance) {
+        window.studentChartInstance.destroy();
     }
 
-    studentChart = new Chart(ctx, {
+    window.studentChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: dates,
@@ -161,8 +145,6 @@ function loadStudentChart(dailyAttendance = {}) {
 // Load recent attendance - Using API
 async function loadRecentAttendance() {
     try {
-        const user = JSON.parse(sessionStorage.getItem('currentUser'));
-        
         const response = await apiRequest('/student/history');
         const records = response.data;
         
@@ -190,8 +172,6 @@ async function loadRecentAttendance() {
 // Load attendance history - Using API
 async function loadAttendanceHistory() {
     try {
-        const user = JSON.parse(sessionStorage.getItem('currentUser'));
-        
         const response = await apiRequest('/student/history');
         const records = response.data;
 
@@ -208,13 +188,7 @@ async function loadAttendanceHistory() {
                 <td>${date.toLocaleTimeString()}</td>
                 <td>${sessionId?.substring(0, 12) || 'N/A'}...</td>
                 <td>${record.location?.distance ? '✓ Verified' : 'N/A'}</td>
-                <td>
-                    ${record.selfieUrl ? 
-                        `<button class="btn btn-sm btn-primary" onclick="viewSelfie('${record.selfieUrl}')">
-                            <i class="fas fa-eye"></i>
-                        </button>` : 
-                        'N/A'}
-                </td>
+                <td>N/A
             `;
             tbody.appendChild(row);
         });
@@ -258,159 +232,13 @@ async function filterHistory() {
                 <td>${date.toLocaleTimeString()}</td>
                 <td>${sessionId?.substring(0, 12) || 'N/A'}...</td>
                 <td>${record.location?.distance ? '✓ Verified' : 'N/A'}</td>
-                <td>
-                    ${record.selfieUrl ? 
-                        `<button class="btn btn-sm btn-primary" onclick="viewSelfie('${record.selfieUrl}')">
-                            <i class="fas fa-eye"></i>
-                        </button>` : 
-                        'N/A'}
-                </td>
+                <td>N/A
             `;
             tbody.appendChild(row);
         });
     } catch (error) {
         console.error('Error filtering history:', error);
     }
-}
-
-// Load analytics - Using API
-// async function loadAnalytics() {
-//     try {
-//         const response = await apiRequest('/student/stats');
-//         const stats = response.data;
-        
-//         document.getElementById('presentCount').textContent = stats.attended || 0;
-//         const totalClasses = stats.total || 0;
-//         const totalPresent = stats.attended || 0;
-//         const totalAbsent = totalClasses - totalPresent;
-//         document.getElementById('absentCount').textContent = totalAbsent;
-//         document.getElementById('totalPercentage').textContent = (stats.percentage || 0) + '%';
-        
-//         const requiredToMaintain = Math.max(0, Math.ceil(0.75 * totalClasses - totalPresent));
-//         document.getElementById('requiredAttendance').textContent = requiredToMaintain;
-
-//         // Destroy old charts before creating new ones
-//         if (weeklyChart) {
-//             weeklyChart.destroy();
-//             weeklyChart = null;
-//         }
-//         if (monthlyChart) {
-//             monthlyChart.destroy();
-//             monthlyChart = null;
-//         }
-
-//         await loadWeeklyChart();
-//         await loadMonthlyComparison();
-        
-//     } catch (error) {
-//         console.error('Error loading analytics:', error);
-//     }
-// }
-
-// Load weekly chart - FIXED
-// async function loadWeeklyChart() {
-//     const canvas = document.getElementById('weeklyChart');
-    
-//     // Check if canvas exists
-//     if (!canvas) {
-//         console.error('Weekly chart canvas not found');
-//         return;
-//     }
-    
-//     const ctx = canvas.getContext('2d');
-    
-//     const response = await apiRequest('/student/history');
-//     const records = response.data;
-    
-//     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-//     const weeklyData = [0, 0, 0, 0, 0, 0, 0];
-    
-//     records.forEach(record => {
-//         const date = new Date(record.timestamp);
-//         const day = date.getDay();
-//         weeklyData[day]++;
-//     });
-
-//     // Create new chart
-//     weeklyChart = new Chart(ctx, {
-//         type: 'line',
-//         data: {
-//             labels: days,
-//             datasets: [{
-//                 label: 'Attendance by Day',
-//                 data: weeklyData,
-//                 borderColor: '#4a90e2',
-//                 backgroundColor: 'rgba(74, 144, 226, 0.1)',
-//                 tension: 0.4,
-//                 fill: true
-//             }]
-//         },
-//         options: {
-//             responsive: true,
-//             maintainAspectRatio: false,
-//             animation: {
-//                 duration: 0
-//             },
-//             plugins: {
-//                 legend: {
-//                     display: true,
-//                     position: 'top'
-//                 }
-//             }
-//         }
-//     });
-// }
-
-// Load monthly comparison - FIXED
-async function loadMonthlyComparison() {
-    const canvas = document.getElementById('monthlyComparisonChart');
-    
-    // Check if canvas exists
-    if (!canvas) {
-        console.error('Monthly comparison chart canvas not found');
-        return;
-    }
-    
-    const ctx = canvas.getContext('2d');
-    
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const monthlyData = new Array(12).fill(0);
-
-    // Create new chart
-    monthlyChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: months,
-            datasets: [{
-                label: 'Attendance Count',
-                data: monthlyData,
-                backgroundColor: '#4a90e2',
-                borderRadius: 5
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: {
-                duration: 0
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1,
-                        precision: 0
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top'
-                }
-            }
-        }
-    });
 }
 
 // Scan QR Code
@@ -464,7 +292,6 @@ async function processQRCode(qrData) {
             throw new Error('Invalid QR code');
         }
 
-        // Validate session with backend
         const response = await apiRequest('/student/validate-session', {
             method: 'POST',
             body: JSON.stringify({ sessionId: data.sessionId, token: data.token })
@@ -476,7 +303,6 @@ async function processQRCode(qrData) {
 
         const user = JSON.parse(sessionStorage.getItem('currentUser'));
         
-        // Check device ID
         const deviceId = await getDeviceId();
         if (user.deviceId && user.deviceId !== deviceId) {
             throw new Error('Device not recognized. Please use your registered device.');
@@ -488,7 +314,7 @@ async function processQRCode(qrData) {
         };
 
         closeQRScanner();
-        openSelfieCapture();
+        openConfirmModal();
 
     } catch (error) {
         console.error('QR processing error:', error);
@@ -497,62 +323,43 @@ async function processQRCode(qrData) {
     }
 }
 
-// Open selfie capture
-async function openSelfieCapture() {
-    document.getElementById('selfieModal').style.display = 'block';
+// Open confirm modal
+async function openConfirmModal() {
+    document.getElementById('confirmModal').style.display = 'block';
     
     try {
-        const video = document.getElementById('selfieVideo');
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
+        const position = await getCurrentLocation();
+        const distance = await calculateDistanceFromClassroom(position.coords);
+        document.getElementById('locationStatus').innerHTML = `
+            Latitude: ${position.coords.latitude.toFixed(6)}<br>
+            Longitude: ${position.coords.longitude.toFixed(6)}<br>
+            Distance from classroom: ${Math.round(distance)} meters
+        `;
+        window.currentLocation = position.coords;
     } catch (error) {
-        console.error('Camera error:', error);
-        showToast('Unable to access camera for selfie', 'error');
+        document.getElementById('locationStatus').innerHTML = 'Unable to fetch location. Please enable location services.';
+        window.currentLocation = null;
     }
 }
 
-// Capture selfie
-function captureSelfie() {
-    const video = document.getElementById('selfieVideo');
-    const canvas = document.getElementById('selfieCanvas');
-    const preview = document.getElementById('selfiePreview');
+// Calculate distance from classroom
+async function calculateDistanceFromClassroom(studentLoc) {
+    const classroomLocation = {
+        latitude: 29.171743,
+        longitude: 75.735818
+    };
     
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    canvas.toBlob(async (blob) => {
-        selfieImage = blob;
-        
-        preview.src = URL.createObjectURL(blob);
-        preview.classList.remove('hidden');
-        video.classList.add('hidden');
-        
-        document.getElementById('submitAttendanceBtn').disabled = false;
-        document.getElementById('retakeBtn').style.display = 'inline-block';
-        
-        video.srcObject.getTracks().forEach(track => track.stop());
-    }, 'image/jpeg');
+    return calculateDistance(
+        studentLoc.latitude,
+        studentLoc.longitude,
+        classroomLocation.latitude,
+        classroomLocation.longitude
+    );
 }
 
-// Retake selfie
-function retakeSelfie() {
-    const video = document.getElementById('selfieVideo');
-    const preview = document.getElementById('selfiePreview');
-    
-    preview.classList.add('hidden');
-    video.classList.remove('hidden');
-    
-    document.getElementById('submitAttendanceBtn').disabled = true;
-    document.getElementById('retakeBtn').style.display = 'none';
-    selfieImage = null;
-    
-    openSelfieCapture();
-}
-
-// Submit attendance - Using API
-async function submitAttendance() {
-    console.log('📝 Submit button clicked!');
+// Confirm attendance (without selfie)
+async function confirmAttendance() {
+    console.log('📝 Confirm Attendance button clicked!');
     
     try {
         showLoading();
@@ -563,27 +370,28 @@ async function submitAttendance() {
             throw new Error('No QR code data found');
         }
         
-        if (!selfieImage) {
-            throw new Error('No selfie captured');
+        if (!window.currentLocation) {
+            throw new Error('Location not available. Please try again.');
         }
         
-        // Get location
-        const position = await getCurrentLocation();
+        const distance = await calculateDistanceFromClassroom(window.currentLocation);
+        const distanceInMeters = Math.round(distance);
         
-        // Call backend API to mark attendance
-        const formData = new FormData();
-        formData.append('data', JSON.stringify({
-            sessionId: currentScanData.sessionId,
-            location: position.coords
-        }));
-        formData.append('selfie', selfieImage);
+        if (distanceInMeters > 1000) {
+            throw new Error(`You are ${distanceInMeters}m away. Max allowed: 1000m`);
+        }
         
-        const response = await fetch(`${API.baseURL}/student/mark-attendance`, {
+        const response = await fetch(`${API.baseURL}/student/mark-attendance-without-selfie`, {
             method: 'POST',
             headers: {
+                'Content-Type': 'application/json',
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             },
-            body: formData
+            body: JSON.stringify({
+                sessionId: currentScanData.sessionId,
+                location: window.currentLocation,
+                distance: distanceInMeters
+            })
         });
         
         const result = await response.json();
@@ -594,9 +402,12 @@ async function submitAttendance() {
         
         showToast('✅ Attendance marked successfully!', 'success');
         
-        closeSelfieModal();
+        closeConfirmModal();
         await loadDashboardStats();
         await loadRecentAttendance();
+        
+        currentScanData = null;
+        window.currentLocation = null;
         
     } catch (error) {
         console.error('❌ Error:', error);
@@ -604,6 +415,12 @@ async function submitAttendance() {
     } finally {
         hideLoading();
     }
+}
+
+// Close confirm modal
+function closeConfirmModal() {
+    document.getElementById('confirmModal').style.display = 'none';
+    window.currentLocation = null;
 }
 
 // Get current location
@@ -621,7 +438,7 @@ function getCurrentLocation() {
     });
 }
 
-// Calculate distance between two coordinates (Haversine formula)
+// Calculate distance between two coordinates
 function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371e3;
     const φ1 = lat1 * Math.PI / 180;
@@ -644,22 +461,6 @@ function closeQRScanner() {
         video.srcObject.getTracks().forEach(track => track.stop());
     }
     document.getElementById('qrScannerModal').style.display = 'none';
-}
-
-// Close selfie modal
-function closeSelfieModal() {
-    const video = document.getElementById('selfieVideo');
-    if (video.srcObject) {
-        video.srcObject.getTracks().forEach(track => track.stop());
-    }
-    document.getElementById('selfieModal').style.display = 'none';
-    selfieImage = null;
-    currentScanData = null;
-}
-
-// View selfie
-function viewSelfie(url) {
-    window.open(url, '_blank');
 }
 
 // Get Device ID
@@ -693,8 +494,7 @@ async function changePassword() {
     if (newPassword && newPassword.length >= 6) {
         try {
             showLoading();
-            // Call backend API to change password
-            const response = await apiRequest('/users/change-password', {
+            await apiRequest('/users/change-password', {
                 method: 'PUT',
                 body: JSON.stringify({ 
                     currentPassword: prompt('Enter current password:'),
@@ -737,29 +537,14 @@ function hideLoading() {
     if (loader) loader.remove();
 }
 
-// Event listener for submit button
-document.addEventListener('DOMContentLoaded', function() {
-    const submitBtn = document.getElementById('submitAttendanceBtn');
-    if (submitBtn) {
-        console.log('✅ Submit button found in DOM');
-        submitBtn.addEventListener('click', function(e) {
-            console.log('👆 Submit button clicked via event listener');
-            submitAttendance();
-        });
-    }
-});
-
-// ✅ EXPORT ALL FUNCTIONS TO WINDOW
+// EXPORT FUNCTIONS TO WINDOW
 window.showSection = showSection;
 window.scanQR = scanQR;
 window.startQRScanner = startQRScanner;
 window.closeQRScanner = closeQRScanner;
-window.captureSelfie = captureSelfie;
-window.retakeSelfie = retakeSelfie;
-window.submitAttendance = submitAttendance;
-window.closeSelfieModal = closeSelfieModal;
-window.viewSelfie = viewSelfie;
 window.filterHistory = filterHistory;
 window.updatePhoto = updatePhoto;
 window.changePassword = changePassword;
 window.toggleDarkMode = toggleDarkMode;
+window.closeConfirmModal = closeConfirmModal;
+window.confirmAttendance = confirmAttendance;
