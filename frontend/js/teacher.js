@@ -123,60 +123,60 @@ async function loadDashboardStats() {
 }
 
 // Load attendance chart - Using API
-async function loadAttendanceChart() {
-    const ctx = document.getElementById('attendanceChart').getContext('2d');
+// async function loadAttendanceChart() {
+//     const ctx = document.getElementById('attendanceChart').getContext('2d');
     
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 7);
+//     const endDate = new Date();
+//     const startDate = new Date();
+//     startDate.setDate(startDate.getDate() - 7);
 
-    const response = await apiRequest(`/teacher/attendance-records?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`);
-    const records = response.data || [];
+//     const response = await apiRequest(`/teacher/attendance-records?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`);
+//     const records = response.data || [];
 
-    const last7Days = [];
-    const dailyCount = {};
+//     const last7Days = [];
+//     const dailyCount = {};
     
-    for (let i = 6; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        last7Days.push(dateStr);
-        dailyCount[dateStr] = 0;
-    }
+//     for (let i = 6; i >= 0; i--) {
+//         const date = new Date();
+//         date.setDate(date.getDate() - i);
+//         const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+//         last7Days.push(dateStr);
+//         dailyCount[dateStr] = 0;
+//     }
 
-    records.forEach(record => {
-        const date = new Date(record.timestamp);
-        const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        if (dailyCount.hasOwnProperty(dateStr)) {
-            dailyCount[dateStr]++;
-        }
-    });
+//     records.forEach(record => {
+//         const date = new Date(record.timestamp);
+//         const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+//         if (dailyCount.hasOwnProperty(dateStr)) {
+//             dailyCount[dateStr]++;
+//         }
+//     });
 
-    const counts = last7Days.map(date => dailyCount[date]);
+//     const counts = last7Days.map(date => dailyCount[date]);
 
-    if (chart) chart.destroy();
+//     if (chart) chart.destroy();
 
-    chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: last7Days,
-            datasets: [{
-                label: 'Daily Attendance',
-                data: counts,
-                borderColor: '#4a90e2',
-                backgroundColor: 'rgba(74, 144, 226, 0.1)',
-                tension: 0.4,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: { duration: 0 },
-            plugins: { legend: { display: false } }
-        }
-    });
-}
+//     chart = new Chart(ctx, {
+//         type: 'line',
+//         data: {
+//             labels: last7Days,
+//             datasets: [{
+//                 label: 'Daily Attendance',
+//                 data: counts,
+//                 borderColor: '#4a90e2',
+//                 backgroundColor: 'rgba(74, 144, 226, 0.1)',
+//                 tension: 0.4,
+//                 fill: true
+//             }]
+//         },
+//         options: {
+//             responsive: true,
+//             maintainAspectRatio: false,
+//             animation: { duration: 0 },
+//             plugins: { legend: { display: false } }
+//         }
+//     });
+// }
 
 // Start attendance session - Using API
 async function startAttendance() {
