@@ -3,6 +3,58 @@ let currentUser = null;
 
 // API Base URL
 
+// Section visibility functions
+function showFeatures() {
+    const features = document.getElementById('features');
+    const howItWorks = document.getElementById('how-it-works');
+    const contact = document.getElementById('contact');
+    
+    if (features) features.classList.remove('hidden-section');
+    if (howItWorks) howItWorks.classList.add('hidden-section');
+    if (contact) contact.classList.add('hidden-section');
+    
+    features.scrollIntoView({ behavior: 'smooth' });
+}
+
+function showHowItWorks() {
+    const features = document.getElementById('features');
+    const howItWorks = document.getElementById('how-it-works');
+    const contact = document.getElementById('contact');
+    
+    if (howItWorks) howItWorks.classList.remove('hidden-section');
+    if (features) features.classList.add('hidden-section');
+    if (contact) contact.classList.add('hidden-section');
+    
+    howItWorks.scrollIntoView({ behavior: 'smooth' });
+}
+
+function showContact() {
+    const features = document.getElementById('features');
+    const howItWorks = document.getElementById('how-it-works');
+    const contact = document.getElementById('contact');
+    
+    if (contact) contact.classList.remove('hidden-section');
+    if (features) features.classList.add('hidden-section');
+    if (howItWorks) howItWorks.classList.add('hidden-section');
+    
+    contact.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Contact form handler
+const contactForm = document.getElementById('contactForm');
+if (contactForm) {
+    contactForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        showToast('Thank you! Your message has been sent successfully.', 'success');
+        this.reset();
+    });
+}
+
+// Get Started button handler
+function handleGetStarted() {
+    showRegisterModal();
+}
+
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {

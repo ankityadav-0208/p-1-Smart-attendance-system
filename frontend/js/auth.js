@@ -292,6 +292,372 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAuthState();
 });
 
+
+// ========== ADD THESE FUNCTIONS AT THE END OF YOUR auth.js FILE ==========
+
+// Modal Display Functions
+function showLoginModal(role) {
+    const modal = document.getElementById('loginModal');
+    const modalTitle = document.getElementById('modalTitle');
+    
+    if (modalTitle) {
+        modalTitle.textContent = role === 'teacher' ? 'Teacher Login' : 'Student Login';
+    }
+    
+    if (modal) {
+        modal.style.display = 'flex';
+        // Clear form fields
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        if (emailInput) emailInput.value = '';
+        if (passwordInput) passwordInput.value = '';
+    }
+}
+
+function showRegisterModal() {
+    const modal = document.getElementById('registerModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        // Reset to student role by default
+        if (typeof selectRole === 'function') {
+            selectRole('student');
+        }
+        // Clear form fields
+        const studentForm = document.getElementById('studentRegisterForm');
+        const teacherForm = document.getElementById('teacherRegisterForm');
+        if (studentForm) studentForm.reset();
+        if (teacherForm) teacherForm.reset();
+    }
+}
+
+function closeModal(modalElement) {
+    if (modalElement) {
+        modalElement.style.display = 'none';
+    }
+}
+
+function closeModals() {
+    const loginModal = document.getElementById('loginModal');
+    const registerModal = document.getElementById('registerModal');
+    if (loginModal) loginModal.style.display = 'none';
+    if (registerModal) registerModal.style.display = 'none';
+}
+
+// Switch to Register from Login
+function switchToRegister() {
+    closeModal(document.getElementById('loginModal'));
+    showRegisterModal();
+}
+
+// Select Role in Registration (for the role toggle buttons)
+function selectRole(role) {
+    // Update active button styling
+    const roleBtns = document.querySelectorAll('.role-btn');
+    roleBtns.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.textContent.toLowerCase().includes(role)) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Show/hide appropriate form
+    const studentForm = document.getElementById('studentRegisterForm');
+    const teacherForm = document.getElementById('teacherRegisterForm');
+    
+    if (role === 'student') {
+        if (studentForm) studentForm.classList.add('active');
+        if (teacherForm) teacherForm.classList.remove('active');
+    } else {
+        if (teacherForm) teacherForm.classList.add('active');
+        if (studentForm) studentForm.classList.remove('active');
+    }
+}
+
+// Handle Login Form Submit (connects your existing login function)
+async function handleLoginSubmit(event) {
+    event.preventDefault();
+    
+    const email = document.getElementById('email')?.value;
+    const password = document.getElementById('password')?.value;
+    
+    if (!email || !password) {
+        showToast('Please fill in all fields', 'error');
+        return;
+    }
+    
+    // Call your existing login function
+    await login(email, password);
+}
+
+// Handle Student Registration Form Submit
+async function handleStudentRegisterSubmit(event) {
+    event.preventDefault();
+    
+    const userData = {
+        name: document.getElementById('studentName')?.value,
+        email: document.getElementById('studentEmail')?.value,
+        password: document.getElementById('studentPassword')?.value,
+        roll: document.getElementById('studentRoll')?.value,
+        section: document.getElementById('studentSection')?.value
+    };
+    
+    const confirmPassword = document.getElementById('studentConfirmPassword')?.value;
+    
+    // Validation
+    if (!userData.name || !userData.roll || !userData.section || !userData.email || !userData.password) {
+        showToast('Please fill in all fields', 'error');
+        return;
+    }
+    
+    if (userData.password !== confirmPassword) {
+        showToast('Passwords do not match', 'error');
+        return;
+    }
+    
+    if (userData.password.length < 6) {
+        showToast('Password must be at least 6 characters', 'error');
+        return;
+    }
+    
+    // Call your existing registerStudent function
+    await registerStudent(userData);
+}
+
+// Handle Teacher Registration Form Submit
+async function handleTeacherRegisterSubmit(event) {
+    event.preventDefault();
+    
+    const userData = {
+        name: document.getElementById('teacherName')?.value,
+        email: document.getElementById('teacherEmail')?.value,
+        password: document.getElementById('teacherPassword')?.value,
+        employeeId: document.getElementById('teacherEmployeeId')?.value,
+        department: document.getElementById('teacherDepartment')?.value,
+        verificationCode: document.getElementById('teacherCode')?.value
+    };
+    
+    const confirmPassword = document.getElementById('teacherConfirmPassword')?.value;
+    
+    // Validation
+    if (!userData.name || !userData.email || !userData.password || !userData.employeeId || !userData.department || !userData.verificationCode) {
+        showToast('Please fill in all fields', 'error');
+        return;
+    }
+    
+    if (userData.password !== confirmPassword) {
+        showToast('Passwords do not match', 'error');
+        return;
+    }
+    
+    if (userData.password.length < 6) {
+        showToast('Password must be at least 6 characters', 'error');
+        return;
+    }
+    
+    // Call your existing registerTeacher function
+    await registerTeacher(userData);
+}
+
+// Function to scroll to features (for nav links)
+function scrollToFeatures() {
+    const featuresSection = document.getElementById('features');
+    if (featuresSection) {
+        featuresSection.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+// Initialize all event listeners (ADD THIS to your existing DOMContentLoaded)
+function initModalEventListeners() {
+    // Login form
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleLoginSubmit);
+    }
+    
+    // Student registration form
+    const studentForm = document.getElementById('studentRegisterForm');
+    if (studentForm) {
+        studentForm.addEventListener('submit', handleStudentRegisterSubmit);
+    }
+    
+    // Teacher registration form
+    const teacherForm = document.getElementById('teacherRegisterForm');
+    if (teacherForm) {
+        teacherForm.addEventListener('submit', handleTeacherRegisterSubmit);
+    }
+    
+    // Close buttons for modals
+    const closeButtons = document.querySelectorAll('.close');
+    closeButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const modal = this.closest('.modal');
+            if (modal) modal.style.display = 'none';
+        });
+    });
+    
+    // Close modals when clicking outside
+    window.onclick = function(event) {
+        const loginModal = document.getElementById('loginModal');
+        const registerModal = document.getElementById('registerModal');
+        
+        if (event.target === loginModal) {
+            loginModal.style.display = 'none';
+        }
+        if (event.target === registerModal) {
+            registerModal.style.display = 'none';
+        }
+    };
+    
+    // Role selector in registration modal
+    const roleBtns = document.querySelectorAll('.role-btn');
+    roleBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const role = this.textContent.toLowerCase().includes('student') ? 'student' : 'teacher';
+            selectRole(role);
+        });
+    });
+}
+
+
+// ========== MODAL FUNCTIONS ==========
+function showLoginModal(role) {
+    const modal = document.getElementById('loginModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        // Clear previous values
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        if (emailInput) emailInput.value = '';
+        if (passwordInput) passwordInput.value = '';
+    }
+}
+
+function showRegisterModal() {
+    const modal = document.getElementById('registerModal');
+    if (modal) {
+        modal.style.display = 'flex';
+    }
+}
+
+function closeModal(modalElement) {
+    if (modalElement) {
+        modalElement.style.display = 'none';
+    }
+}
+
+function switchToRegister() {
+    closeModal(document.getElementById('loginModal'));
+    showRegisterModal();
+}
+
+// ========== LOGIN HANDLER ==========
+async function handleLoginSubmit(event) {
+    event.preventDefault();
+    
+    const email = document.getElementById('email')?.value;
+    const password = document.getElementById('password')?.value;
+    
+    if (!email || !password) {
+        showToast('Please enter email and password', 'error');
+        return;
+    }
+    
+    // Call your existing login function
+    await login(email, password);
+}
+
+// ========== REGISTRATION HANDLERS ==========
+async function handleStudentRegisterSubmit(event) {
+    event.preventDefault();
+    
+    const userData = {
+        name: document.getElementById('studentName')?.value,
+        email: document.getElementById('studentEmail')?.value,
+        password: document.getElementById('studentPassword')?.value,
+        roll: document.getElementById('studentRoll')?.value,
+        section: document.getElementById('studentSection')?.value
+    };
+    
+    const confirmPassword = document.getElementById('studentConfirmPassword')?.value;
+    
+    if (userData.password !== confirmPassword) {
+        showToast('Passwords do not match', 'error');
+        return;
+    }
+    
+    await registerStudent(userData);
+}
+
+async function handleTeacherRegisterSubmit(event) {
+    event.preventDefault();
+    
+    const userData = {
+        name: document.getElementById('teacherName')?.value,
+        email: document.getElementById('teacherEmail')?.value,
+        password: document.getElementById('teacherPassword')?.value,
+        employeeId: document.getElementById('teacherEmployeeId')?.value,
+        department: document.getElementById('teacherDepartment')?.value,
+        verificationCode: document.getElementById('teacherCode')?.value
+    };
+    
+    const confirmPassword = document.getElementById('teacherConfirmPassword')?.value;
+    
+    if (userData.password !== confirmPassword) {
+        showToast('Passwords do not match', 'error');
+        return;
+    }
+    
+    await registerTeacher(userData);
+}
+
+function selectRole(role) {
+    const studentForm = document.getElementById('studentRegisterForm');
+    const teacherForm = document.getElementById('teacherRegisterForm');
+    const roleBtns = document.querySelectorAll('.role-btn');
+    
+    roleBtns.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.textContent.toLowerCase().includes(role)) {
+            btn.classList.add('active');
+        }
+    });
+    
+    if (role === 'student') {
+        if (studentForm) studentForm.classList.add('active');
+        if (teacherForm) teacherForm.classList.remove('active');
+    } else {
+        if (teacherForm) teacherForm.classList.add('active');
+        if (studentForm) studentForm.classList.remove('active');
+    }
+}
+
+// ========== EXPOSE FUNCTIONS GLOBALLY ==========
+window.showLoginModal = showLoginModal;
+window.showRegisterModal = showRegisterModal;
+window.closeModal = closeModal;
+window.switchToRegister = switchToRegister;
+window.handleLoginSubmit = handleLoginSubmit;
+window.handleStudentRegisterSubmit = handleStudentRegisterSubmit;
+window.handleTeacherRegisterSubmit = handleTeacherRegisterSubmit;
+window.selectRole = selectRole;
+// ========== EXPORT ALL NEW FUNCTIONS ==========
+window.showLoginModal = showLoginModal;
+window.showRegisterModal = showRegisterModal;
+window.closeModal = closeModal;
+window.closeModals = closeModals;
+window.switchToRegister = switchToRegister;
+window.selectRole = selectRole;
+window.scrollToFeatures = scrollToFeatures;
+
+// Update existing DOMContentLoaded to include our new initializer
+// (This preserves your existing checkAuthState call)
+const existingDOMListener = document.addEventListener;
+document.addEventListener('DOMContentLoaded', () => {
+    checkAuthState();
+    initModalEventListeners();
+});
+
+
 // Export functions for use in other files
 window.login = login;
 window.logout = logout;
