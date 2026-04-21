@@ -29,10 +29,10 @@
             </div>
 
             <div class="pending-actions">
-                <button class="btn btn-outline" onclick="logout()">
+                <button class="btn btn-outline" onclick="handleLogout()">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </button>
-                <button class="btn btn-primary" onclick="checkStatus()">
+                <button class="btn btn-primary" onclick="checkApprovalStatus()">
                     <i class="fas fa-sync-alt"></i> Check Status
                 </button>
             </div>
@@ -43,84 +43,135 @@
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-    <script src="js/firebase-config.js"></script>
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    
     <script>
-    // Load teacher details
-    document.addEventListener('DOMContentLoaded', async () => {
-        const user = JSON.parse(sessionStorage.getItem('currentUser'));
-        if (!user) {
-            window.location.href = 'index.html';
-            return;
-        }
-
-        const detailsDiv = document.getElementById('teacherDetails');
-        if (detailsDiv) {
-            detailsDiv.innerHTML = `
-                <p><strong>Name:</strong> ${user.name}</p>
-                <p><strong>Employee ID:</strong> ${user.employeeId || 'N/A'}</p>
-                <p><strong>Department:</strong> ${user.department || 'N/A'}</p>
-                <p><strong>Email:</strong> ${user.email}</p>
-                <p><strong>Status:</strong> <span class="badge badge-warning">Pending Review</span></p>
-            `;
-        }
-    });
-
-    // Logout function
-    async function logout() {
-        try {
-            showLoading();
-            await auth.signOut();
-            sessionStorage.removeItem('currentUser');
-            window.location.href = 'index.html';
-        } catch (error) {
-            console.error('Logout error:', error);
-            alert('Error logging out. Please try again.');
-        } finally {
-            hideLoading();
-        }
-    }
-
-    // Check approval status
-    async function checkStatus() {
-        try {
-            const user = auth.currentUser;
-            if (!user) {
+        // Get current user from session
+        let currentUser = null;
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Get user from session storage
+            const storedUser = sessionStorage.getItem('currentUser');
+            if (!storedUser) {
                 window.location.href = 'index.html';
                 return;
             }
-
-            const userDoc = await db.collection('users').doc(user.uid).get();
-            if (userDoc.exists) {
-                const userData = userDoc.data();
-                if (userData.role === 'teacher') {
-                    window.location.href = 'teacher-dashboard.html';
-                } else if (userData.role === 'student') {
-                    window.location.href = 'student-dashboard.html';
-                } else {
-                    alert('Still pending approval');
-                }
+            
+            currentUser = JSON.parse(storedUser);
+            console.log('Pending approval user:', currentUser);
+            
+            // Display teacher details
+            const detailsDiv = document.getElementById('teacherDetails');
+            if (detailsDiv && currentUser) {
+                detailsDiv.innerHTML = `
+                    <div class="detail-row">
+                        <span class="detail-label">Name:</span>
+                        <span class="detail-value">${currentUser.name || 'N/A'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Employee ID:</span>
+                        <span class="detail-value">${currentUser.employeeId || currentUser.roll || 'N/A'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Department:</span>
+                        <span class="detail-value">${currentUser.department || currentUser.section || 'N/A'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Email:</span>
+                        <span class="detail-value">${currentUser.email || 'N/A'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Status:</span>
+                        <span class="badge badge-warning">Pending Review</span>
+                    </div>
+                `;
             }
-        } catch (error) {
-            console.error('Error checking status:', error);
-            alert('Error checking status');
+        });
+        
+        // Handle logout using your existing logout function
+        async function handleLogout() {
+            try {
+                // Clear stored data
+                localStorage.removeItem('token');
+                sessionStorage.removeItem('currentUser');
+                showToast('Logged out successfully', 'success');
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1000);
+            } catch (error) {
+                console.error('Logout error:', error);
+                showToast('Error logging out', 'error');
+            }
         }
-    }
-
-    // Simple loading functions
-    function showLoading() {
-        // You can add a simple loading indicator if needed
-    }
-
-    function hideLoading() {
-        // Hide loading indicator
-    }
-
-    // Make functions global
-    window.logout = logout;
-    window.checkStatus = checkStatus;
-</script>
+        
+        // Check approval status from backend
+        async function checkApprovalStatus() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            showToast('Checking status...', 'info');
+            
+            try {
+                // Call your backend API to check user status
+                const response = await fetch(`${API_BASE_URL}/auth/status`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.user) {
+                    if (data.user.role === 'teacher') {
+                        // Approved! Redirect to teacher dashboard
+                        showToast('Account approved! Redirecting...', 'success');
+                        sessionStorage.setItem('currentUser', JSON.stringify(data.user));
+                        setTimeout(() => {
+                            window.location.href = 'teacher-dashboard.html';
+                        }, 1500);
+                    } else if (data.user.role === 'pending_teacher') {
+                        // Still pending
+                        showToast('Account still pending approval. Please wait.', 'warning');
+                    } else {
+                        window.location.href = 'index.html';
+                    }
+                } else {
+                    showToast(data.message || 'Still pending approval', 'warning');
+                }
+            } catch (error) {
+                console.error('Error checking status:', error);
+                showToast('Unable to check status. Please try again.', 'error');
+            }
+        }
+        
+        // Toast notification
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span>${message}</span>`;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        
+        // Make functions global
+        window.handleLogout = handleLogout;
+        window.checkApprovalStatus = checkApprovalStatus;
+    </script>
 </body>
 </html>
