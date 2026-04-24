@@ -25,9 +25,6 @@
                 <a href="#" onclick="showSection('history')">
                     <i class="fas fa-history"></i> Attendance History
                 </a>
-                <a href="#" onclick="showSection('analytics')">
-                    <i class="fas fa-chart-line"></i> Analytics
-                </a>
                 <a href="#" onclick="showSection('profile')">
                     <i class="fas fa-user"></i> Profile
                 </a>
@@ -151,7 +148,7 @@
                                 <th>Time</th>
                                 <th>Session ID</th>
                                 <th>Location</th>
-                                <th>Selfie</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
                         <tbody id="historyTableBody">
@@ -161,67 +158,13 @@
                 </div>
             </div>
 
-            <!-- Analytics Section
-            <div id="analyticsSection" class="section">
-                <h3>Attendance Analytics</h3>
-                
-                <div class="analytics-grid">
-                    <div class="analytics-card glass-effect">
-                        <h4>Weekly Pattern</h4>
-                        <canvas id="weeklyChart"></canvas>
-                    </div>
-                    
-                    <div class="analytics-card glass-effect">
-                        <h4>Monthly Comparison</h4>
-                        <canvas id="monthlyComparisonChart"></canvas>
-                    </div>
-                    
-                    <div class="analytics-card glass-effect">
-                        <h4>Subject-wise Attendance</h4>
-                        <canvas id="subjectChart"></canvas>
-                    </div>
-                    
-                    <div class="analytics-card glass-effect">
-                        <h4>Attendance Summary</h4>
-                        <div class="summary-stats">
-                            <div class="summary-item">
-                                <span class="label">Present:</span>
-                                <span class="value" id="presentCount">0</span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="label">Absent:</span>
-                                <span class="value" id="absentCount">0</span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="label">Percentage:</span>
-                                <span class="value" id="totalPercentage">0%</span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="label">Required to maintain 75%:</span>
-                                <span class="value" id="requiredAttendance">0</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div> -->
-
-            <!-- Analytics Section -->
-            <div id="analyticsSection" class="section">
-                <div class="glass-effect" style="padding: 40px; text-align: center;">
-                    <i class="fas fa-chart-line" style="font-size: 48px; color: #4a90e2; margin-bottom: 20px;"></i>
-                    <h3>Attendance Analytics</h3>
-                    <p>Analytics feature is currently disabled.</p>
-                    <p>Please check back later for updates.</p>
-                </div>
-            </div>
-
             <!-- Profile Section -->
             <div id="profileSection" class="section">
                 <div class="profile-card glass-effect">
                     <div class="profile-header">
                         <img src="" alt="Profile" id="profilePhoto" class="profile-large">
                         <h2 id="profileName"></h2>
-                        <p id="profileRole"></p>
+                        <p id="profileRoleStudent">Student</p>
                     </div>
                     
                     <div class="profile-details">
@@ -231,7 +174,7 @@
                         </div>
                         <div class="detail-row">
                             <label>Section:</label>
-                            <span id="profileSection"></span>
+                            <span id="profileSectionText"></span>
                         </div>
                         <div class="detail-row">
                             <label>Email:</label>
@@ -276,7 +219,7 @@
         </div>
     </div>
 
-    <!-- Confirmation Modal (instead of selfie) -->
+    <!-- Confirmation Modal -->
     <div id="confirmModal" class="modal">
         <div class="modal-content glass-effect">
             <span class="close" onclick="closeConfirmModal()">&times;</span>

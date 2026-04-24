@@ -76,14 +76,12 @@ function showSection(section) {
         overview: 'Overview',
         attendance: 'Attendance Records',
         students: 'My Students',
-        // reports: 'Reports',
         settings: 'Settings'
     };
     document.getElementById('pageTitle').textContent = titles[section];
     
     if (section === 'attendance') loadAttendanceRecords();
     if (section === 'students') loadStudents();
-    if (section === 'reports') loadSectionsForReport();
 }
 
 // Load dashboard statistics - Using API
@@ -115,68 +113,13 @@ async function loadDashboardStats() {
         const sessionsResponse = await apiRequest('/teacher/active-sessions');
         document.getElementById('activeSessions').textContent = (sessionsResponse.data || []).length;
 
-        loadAttendanceChart();
+        // loadAttendanceChart is disabled - chart removed
+        // loadAttendanceChart();
     } catch (error) {
         console.error('Error loading stats:', error);
         showToast('Error loading dashboard data', 'error');
     }
 }
-
-// Load attendance chart - Using API
-// async function loadAttendanceChart() {
-//     const ctx = document.getElementById('attendanceChart').getContext('2d');
-    
-//     const endDate = new Date();
-//     const startDate = new Date();
-//     startDate.setDate(startDate.getDate() - 7);
-
-//     const response = await apiRequest(`/teacher/attendance-records?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`);
-//     const records = response.data || [];
-
-//     const last7Days = [];
-//     const dailyCount = {};
-    
-//     for (let i = 6; i >= 0; i--) {
-//         const date = new Date();
-//         date.setDate(date.getDate() - i);
-//         const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-//         last7Days.push(dateStr);
-//         dailyCount[dateStr] = 0;
-//     }
-
-//     records.forEach(record => {
-//         const date = new Date(record.timestamp);
-//         const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-//         if (dailyCount.hasOwnProperty(dateStr)) {
-//             dailyCount[dateStr]++;
-//         }
-//     });
-
-//     const counts = last7Days.map(date => dailyCount[date]);
-
-//     if (chart) chart.destroy();
-
-//     chart = new Chart(ctx, {
-//         type: 'line',
-//         data: {
-//             labels: last7Days,
-//             datasets: [{
-//                 label: 'Daily Attendance',
-//                 data: counts,
-//                 borderColor: '#4a90e2',
-//                 backgroundColor: 'rgba(74, 144, 226, 0.1)',
-//                 tension: 0.4,
-//                 fill: true
-//             }]
-//         },
-//         options: {
-//             responsive: true,
-//             maintainAspectRatio: false,
-//             animation: { duration: 0 },
-//             plugins: { legend: { display: false } }
-//         }
-//     });
-// }
 
 // Start attendance session - Using API
 async function startAttendance() {
@@ -358,7 +301,8 @@ async function loadStudents() {
                 <td>${student.name}</td>
                 <td>${student.section || 'N/A'}</td>
                 <td>${percentage}%</td>
-                <td>Never\n            `;
+                <td>Never
+            `;
             tbody.appendChild(row);
         }
 
@@ -433,91 +377,14 @@ async function filterStudents() {
                 <td>${student.name}</td>
                 <td>${student.section || 'N/A'}</td>
                 <td>${percentage}%</td>
-                <td>N/A\n            `;
+                <td>N/A
+            `;
             tbody.appendChild(row);
         }
     } catch (error) {
         console.error('Error filtering students:', error);
     }
 }
-
-// Store report chart instance globally
-// let reportChart = null;
-
-// Generate report - Using API (FIXED - no infinite loop)
-// async function generateReport() {
-//     const month = parseInt(document.getElementById('reportMonth').value);
-//     const section = document.getElementById('reportSection').value;
-//     const year = new Date().getFullYear();
-
-//     try {
-//         const response = await apiRequest(`/teacher/report?month=${month}&year=${year}&section=${section}`);
-//         const reportData = response.data || [];
-
-//         const labels = reportData.map(s => s.name);
-//         const data = reportData.map(s => parseFloat(s.percentage));
-
-//         const ctx = document.getElementById('reportChart').getContext('2d');
-        
-//         // Destroy existing chart if it exists
-//         if (reportChart) {
-//             reportChart.destroy();
-//             reportChart = null;
-//         }
-        
-//         reportChart = new Chart(ctx, {
-//             type: 'bar',
-//             data: {
-//                 labels: labels,
-//                 datasets: [{
-//                     label: 'Attendance Percentage',
-//                     data: data,
-//                     backgroundColor: '#4a90e2'
-//                 }]
-//             },
-//             options: {
-//                 responsive: true,
-//                 maintainAspectRatio: false,
-//                 animation: { duration: 0 },  // Disable animation
-//                 scales: { y: { beginAtZero: true, max: 100 } }
-//             }
-//         });
-        
-//         showToast('Report generated', 'success');
-//     } catch (error) {
-//         console.error('Error generating report:', error);
-//         showToast('Error generating report', 'error');
-//     }
-// }
-
-// Download CSV - Using API
-// async function downloadCSV() {
-//     try {
-//         const response = await apiRequest('/teacher/attendance-records');
-//         const records = response.data || [];
-
-//         let csv = 'Date,Student Name,Roll Number,Section,Session ID\n';
-
-//         for (const record of records) {
-//             const student = record.studentId || {};
-//             const date = new Date(record.timestamp);
-            
-//             csv += `${date.toLocaleString()},${student.name || 'Unknown'},${student.rollNumber || 'N/A'},${student.section || 'N/A'},${record.sessionId}\n`;
-//         }
-
-//         const blob = new Blob([csv], { type: 'text/csv' });
-//         const url = window.URL.createObjectURL(blob);
-//         const a = document.createElement('a');
-//         a.href = url;
-//         a.download = `attendance_report_${new Date().toISOString().split('T')[0]}.csv`;
-//         a.click();
-        
-//         showToast('CSV downloaded successfully', 'success');
-//     } catch (error) {
-//         console.error('Error downloading CSV:', error);
-//         showToast('Error downloading CSV', 'error');
-//     }
-// }
 
 // View selfie
 function viewSelfie(url) {
@@ -570,11 +437,6 @@ function formatDate(timestamp) {
     return date.toLocaleString();
 }
 
-// Load sections for report
-function loadSectionsForReport() {
-    // Already handled in loadSections
-}
-
 // Loading functions
 function showLoading() {
     let loader = document.getElementById('teacherLoader');
@@ -597,8 +459,6 @@ window.showSection = showSection;
 window.startAttendance = startAttendance;
 window.stopAttendance = stopAttendance;
 window.filterStudents = filterStudents;
-window.generateReport = generateReport;
-window.downloadCSV = downloadCSV;
 window.viewSelfie = viewSelfie;
 window.changePassword = changePassword;
 window.toggleDarkMode = toggleDarkMode;
