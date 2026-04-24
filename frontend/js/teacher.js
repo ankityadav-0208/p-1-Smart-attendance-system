@@ -281,27 +281,53 @@ async function loadStudents() {
         const students = response.data || [];
 
         const tbody = document.getElementById('studentsTableBody');
+        if (!tbody) return;
+
+        // First, get all attendance records to count unique sessions
+        const allRecordsResponse = await apiRequest('/teacher/attendance-records');
+        const allRecords = allRecordsResponse.data || [];
+        
+        // Count unique session IDs from all records
+        const uniqueSessionIds = new Set();
+        allRecords.forEach(record => {
+            const sessionId = record.sessionId?._id || record.sessionId;
+            if (sessionId) uniqueSessionIds.add(sessionId.toString());
+        });
+        const totalSessionsCount = uniqueSessionIds.size;
+        
+        console.log('Total unique sessions:', totalSessionsCount);
+
         tbody.innerHTML = '';
 
         for (const student of students) {
-            // Get attendance percentage
+            // Get attendance records for this student
             const attendanceResponse = await apiRequest(`/teacher/attendance-records?studentId=${student._id}`);
             const attendanceRecords = attendanceResponse.data || [];
             
-            const totalSessionsResponse = await apiRequest('/teacher/attendance-records');
-            const totalSessions = totalSessionsResponse.data?.length || 0;
-            
-            const percentage = totalSessions > 0 
-                ? ((attendanceRecords.length / totalSessions) * 100).toFixed(1)
-                : 0;
+            // Calculate percentage based on unique sessions
+            let percentage = 0;
+            if (totalSessionsCount > 0) {
+                percentage = (attendanceRecords.length / totalSessionsCount) * 100;
+            }
+            const percentageFormatted = percentage.toFixed(1);
+
+            // Get last attendance date
+            let lastAttendanceDate = 'Never';
+            if (attendanceRecords.length > 0) {
+                attendanceRecords.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                const lastRecord = attendanceRecords[0];
+                if (lastRecord && lastRecord.timestamp) {
+                    lastAttendanceDate = new Date(lastRecord.timestamp).toLocaleDateString();
+                }
+            }
 
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${student.rollNumber || 'N/A'}</td>
                 <td>${student.name}</td>
                 <td>${student.section || 'N/A'}</td>
-                <td>${percentage}%</td>
-                <td>Never
+                <td>${percentageFormatted}%</td>
+                <td>${lastAttendanceDate}
             `;
             tbody.appendChild(row);
         }
@@ -347,6 +373,17 @@ async function filterStudents() {
     const search = document.getElementById('searchStudent').value.toLowerCase();
 
     try {
+        // First, get all attendance records to count unique sessions
+        const allRecordsResponse = await apiRequest('/teacher/attendance-records');
+        const allRecords = allRecordsResponse.data || [];
+        
+        const uniqueSessionIds = new Set();
+        allRecords.forEach(record => {
+            const sessionId = record.sessionId?._id || record.sessionId;
+            if (sessionId) uniqueSessionIds.add(sessionId.toString());
+        });
+        const totalSessionsCount = uniqueSessionIds.size;
+
         const response = await apiRequest('/teacher/students');
         let students = response.data || [];
         
@@ -364,20 +401,28 @@ async function filterStudents() {
             const attendanceResponse = await apiRequest(`/teacher/attendance-records?studentId=${student._id}`);
             const attendanceRecords = attendanceResponse.data || [];
             
-            const totalSessionsResponse = await apiRequest('/teacher/attendance-records');
-            const totalSessions = totalSessionsResponse.data?.length || 0;
-            
-            const percentage = totalSessions > 0 
-                ? ((attendanceRecords.length / totalSessions) * 100).toFixed(1)
-                : 0;
+            let percentage = 0;
+            if (totalSessionsCount > 0) {
+                percentage = (attendanceRecords.length / totalSessionsCount) * 100;
+            }
+            const percentageFormatted = percentage.toFixed(1);
+
+            let lastAttendanceDate = 'Never';
+            if (attendanceRecords.length > 0) {
+                attendanceRecords.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                const lastRecord = attendanceRecords[0];
+                if (lastRecord && lastRecord.timestamp) {
+                    lastAttendanceDate = new Date(lastRecord.timestamp).toLocaleDateString();
+                }
+            }
 
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${student.rollNumber || 'N/A'}</td>
                 <td>${student.name}</td>
                 <td>${student.section || 'N/A'}</td>
-                <td>${percentage}%</td>
-                <td>N/A
+                <td>${percentageFormatted}%</td>
+                <td>${lastAttendanceDate}
             `;
             tbody.appendChild(row);
         }
