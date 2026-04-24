@@ -44,23 +44,45 @@ async function loadStudentData() {
         return;
     }
 
-    document.getElementById('studentName').textContent = user.name;
-    document.getElementById('studentInfo').textContent = `${user.rollNumber || ''} • ${user.section || ''}`;
+    // Update sidebar - with null checks
+    const studentNameElem = document.getElementById('studentName');
+    if (studentNameElem) studentNameElem.textContent = user.name;
     
+    const studentInfoElem = document.getElementById('studentInfo');
+    if (studentInfoElem) studentInfoElem.textContent = `${user.rollNumber || ''} • ${user.section || ''}`;
+    
+    // Update profile images
     if (user.profilePhotoURL) {
-        document.getElementById('profileImage').src = user.profilePhotoURL;
-        document.getElementById('profilePhoto').src = user.profilePhotoURL;
+        const profileImageElem = document.getElementById('profileImage');
+        if (profileImageElem) profileImageElem.src = user.profilePhotoURL;
+        
+        const profilePhotoElem = document.getElementById('profilePhoto');
+        if (profilePhotoElem) profilePhotoElem.src = user.profilePhotoURL;
     }
 
-    document.getElementById('profileName').textContent = user.name;
-    document.getElementById('profileRoll').textContent = user.rollNumber || 'N/A';
-    document.getElementById('profileSection').textContent = user.section || 'N/A';
-    document.getElementById('profileEmail').textContent = user.email;
-    document.getElementById('profileDeviceId').textContent = user.deviceId ? user.deviceId.substring(0, 16) + '...' : 'N/A';
+    // Update profile details - with null checks for all elements
+    const profileNameElem = document.getElementById('profileName');
+    if (profileNameElem) profileNameElem.textContent = user.name;
     
-    if (user.createdAt) {
-        document.getElementById('profileJoined').textContent = new Date(user.createdAt).toLocaleDateString();
-    }
+    const profileRollElem = document.getElementById('profileRoll');
+    if (profileRollElem) profileRollElem.textContent = user.rollNumber || 'N/A';
+    
+    // THIS IS LINE 58 - FIXED with null check
+    const profileSectionElem = document.getElementById('profileSection');
+    if (profileSectionElem) profileSectionElem.textContent = user.section || 'N/A';
+    
+    // Also try the alternative ID if needed
+    const profileSectionTextElem = document.getElementById('profileSectionText');
+    if (profileSectionTextElem) profileSectionTextElem.textContent = user.section || 'N/A';
+    
+    const profileEmailElem = document.getElementById('profileEmail');
+    if (profileEmailElem) profileEmailElem.textContent = user.email;
+    
+    const profileDeviceIdElem = document.getElementById('profileDeviceId');
+    if (profileDeviceIdElem) profileDeviceIdElem.textContent = user.deviceId ? user.deviceId.substring(0, 16) + '...' : 'N/A';
+    
+    const profileJoinedElem = document.getElementById('profileJoined');
+    if (profileJoinedElem && user.createdAt) profileJoinedElem.textContent = new Date(user.createdAt).toLocaleDateString();
 }
 
 // Show different sections
@@ -87,13 +109,21 @@ async function loadDashboardStats() {
         const response = await apiRequest('/student/stats');
         const stats = response.data;
         
-        document.getElementById('totalClasses').textContent = stats.total || 0;
-        document.getElementById('classesAttended').textContent = stats.attended || 0;
-        document.getElementById('attendancePercentage').textContent = (stats.percentage || 0) + '%';
+        console.log('Stats received:', stats); // Debug log
+        
+        const totalClassesElem = document.getElementById('totalClasses');
+        if (totalClassesElem) totalClassesElem.textContent = stats.total || 0;
+        
+        const classesAttendedElem = document.getElementById('classesAttended');
+        if (classesAttendedElem) classesAttendedElem.textContent = stats.attended || 0;
+        
+        const attendancePercentageElem = document.getElementById('attendancePercentage');
+        if (attendancePercentageElem) attendancePercentageElem.textContent = (stats.percentage || 0) + '%';
 
         loadStudentChart(stats.dailyAttendance || {});
         
-        document.getElementById('studentRank').textContent = '-';
+        const studentRankElem = document.getElementById('studentRank');
+        if (studentRankElem) studentRankElem.textContent = '-';
 
     } catch (error) {
         console.error('Error loading stats:', error);
