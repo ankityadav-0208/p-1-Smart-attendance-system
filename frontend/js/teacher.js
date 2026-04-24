@@ -204,7 +204,7 @@ function startQRTimer() {
         const seconds = timeLeft % 60;
         timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
         
-        if (timeLeft % 10 === 0 && currentSession) {
+        if (timeLeft % 120 === 0 && currentSession) {
             currentSession.sessionToken = generateSessionToken();
             generateQRCode(currentSession.id, currentSession.sessionToken);
         }

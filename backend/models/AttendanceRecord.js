@@ -23,7 +23,8 @@ const AttendanceRecordSchema = new mongoose.Schema({
     },
     selfieUrl: {
         type: String,
-        required: true
+        default: '',  // Changed from 'required: true' to optional with default
+        required: false  // Make it optional
     },
     deviceId: {
         type: String,
