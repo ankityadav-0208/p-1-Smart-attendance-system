@@ -274,20 +274,31 @@ async function loadAttendanceRecords() {
     }
 }
 
-// Load students - Using API
+// Load students - Using API (FIXED - No Duplicates)
 async function loadStudents() {
     try {
         const response = await apiRequest('/teacher/students');
-        const students = response.data || [];
+        let students = response.data || [];
+
+        // Remove duplicates by student ID
+        const uniqueStudents = new Map();
+        students.forEach(student => {
+            if (!uniqueStudents.has(student._id)) {
+                uniqueStudents.set(student._id, student);
+            }
+        });
+        students = Array.from(uniqueStudents.values());
+        
+        console.log('Unique students count:', students.length);
 
         const tbody = document.getElementById('studentsTableBody');
         if (!tbody) return;
 
-        // First, get all attendance records to count unique sessions
+        // Get total number of UNIQUE sessions
         const allRecordsResponse = await apiRequest('/teacher/attendance-records');
         const allRecords = allRecordsResponse.data || [];
         
-        // Count unique session IDs from all records
+        // Count unique session IDs
         const uniqueSessionIds = new Set();
         allRecords.forEach(record => {
             const sessionId = record.sessionId?._id || record.sessionId;
@@ -304,18 +315,18 @@ async function loadStudents() {
             const attendanceResponse = await apiRequest(`/teacher/attendance-records?studentId=${student._id}`);
             const attendanceRecords = attendanceResponse.data || [];
             
-            // Calculate percentage based on unique sessions
+            // Calculate percentage based on unique sessions attended
             let percentage = 0;
             if (totalSessionsCount > 0) {
                 percentage = (attendanceRecords.length / totalSessionsCount) * 100;
             }
             const percentageFormatted = percentage.toFixed(1);
 
-            // Get last attendance date
+            // Get last attendance date (only once)
             let lastAttendanceDate = 'Never';
             if (attendanceRecords.length > 0) {
-                attendanceRecords.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                const lastRecord = attendanceRecords[0];
+                const sortedRecords = [...attendanceRecords].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                const lastRecord = sortedRecords[0];
                 if (lastRecord && lastRecord.timestamp) {
                     lastAttendanceDate = new Date(lastRecord.timestamp).toLocaleDateString();
                 }
@@ -335,7 +346,7 @@ async function loadStudents() {
         loadSections();
     } catch (error) {
         console.error('Error loading students:', error);
-        showToast('Error loading students', 'error');
+        showToast('Error loading students: ' + error.message, 'error');
     }
 }
 
@@ -367,13 +378,13 @@ async function loadSections() {
     }
 }
 
-// Filter students
+// Filter students - FIXED (No Duplicates)
 async function filterStudents() {
     const section = document.getElementById('sectionFilter').value;
     const search = document.getElementById('searchStudent').value.toLowerCase();
 
     try {
-        // First, get all attendance records to count unique sessions
+        // Get unique sessions count
         const allRecordsResponse = await apiRequest('/teacher/attendance-records');
         const allRecords = allRecordsResponse.data || [];
         
@@ -387,6 +398,16 @@ async function filterStudents() {
         const response = await apiRequest('/teacher/students');
         let students = response.data || [];
         
+        // Remove duplicates by student ID
+        const uniqueStudents = new Map();
+        students.forEach(student => {
+            if (!uniqueStudents.has(student._id)) {
+                uniqueStudents.set(student._id, student);
+            }
+        });
+        students = Array.from(uniqueStudents.values());
+        
+        // Apply filters
         students = students.filter(student => {
             if (section && student.section !== section) return false;
             if (search && !student.name.toLowerCase().includes(search) && 
@@ -409,8 +430,8 @@ async function filterStudents() {
 
             let lastAttendanceDate = 'Never';
             if (attendanceRecords.length > 0) {
-                attendanceRecords.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                const lastRecord = attendanceRecords[0];
+                const sortedRecords = [...attendanceRecords].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                const lastRecord = sortedRecords[0];
                 if (lastRecord && lastRecord.timestamp) {
                     lastAttendanceDate = new Date(lastRecord.timestamp).toLocaleDateString();
                 }
