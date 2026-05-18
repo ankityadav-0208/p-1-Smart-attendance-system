@@ -7,7 +7,6 @@ A production-ready attendance management system for universities that prevents p
 ### 🔐 Security Features
 - **Dynamic QR Codes**: Refresh every 10 seconds to prevent sharing
 - **Location Verification**: Students must be within 50 meters of classroom
-- **Auto Selfie Capture**: Automatic face capture during attendance
 - **Device Binding**: Students tied to registered devices
 - **Time Restrictions**: Sessions expire after 5 minutes
 - **Role-based Access**: Separate student/teacher dashboards
