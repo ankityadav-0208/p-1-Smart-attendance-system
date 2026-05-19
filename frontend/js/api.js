@@ -1,6 +1,7 @@
 // API Service for backend communication
 const API = {
     baseURL: 'https://p-1-smart-attendance-system-02.onrender.com/api',  // ✅ Updated to live backend
+    //baseURL: 'http://localhost:5000/api', 
     
     // Helper method for API calls
     async request(endpoint, options = {}) {

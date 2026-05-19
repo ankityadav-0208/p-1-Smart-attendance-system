@@ -30,7 +30,10 @@ app.use(helmet());
 // Enable CORS
 app.use(cors({
     origin: ['https://ankityadav-0208.github.io', 'http://localhost:5500'],
-    credentials: true
+    //origin: ['http://localhost:5500', 'http://127.0.0.1:5500', 'https://ankityadav-0208.github.io'],
+
+    credentials: true,
+    exposedHeaders: ['Content-Disposition']
 }));
 
 // Rate limiting
@@ -48,6 +51,7 @@ app.use('/api/student', studentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ✅ Test endpoint to verify API is working
 app.get('/api/health', (req, res) => {

@@ -150,7 +150,9 @@ router.post('/profile-photo', protect, profileUpload.single('profilePhoto'), asy
             });
         }
         
-        const profilePhotoURL = `${req.protocol}://${req.get('host')}/uploads/profiles/${req.user.id}/${req.file.filename}`;
+        // Force HTTPS for production
+        const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
+        const profilePhotoURL = `${protocol}://${req.get('host')}/uploads/profiles/${req.user.id}/${req.file.filename}`;
         
         const user = await User.findByIdAndUpdate(
             req.user.id,
