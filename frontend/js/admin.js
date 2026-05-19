@@ -87,10 +87,16 @@ function showSection(section) {
         teachers: 'Teacher Management',
         students: 'Student Management',
         approvals: 'Pending Approvals',
-        // reports: 'Reports',
+        subjects: 'Subject Management',
         settings: 'Settings'
     };
     document.getElementById('pageTitle').textContent = titles[section] || 'Overview';
+    
+    // Load section-specific data
+    if (section === 'subjects') loadSubjects();
+    if (section === 'teachers') loadTeachers();
+    if (section === 'students') loadStudents();
+    if (section === 'approvals') loadPendingApprovals();
 }
 
 // Load dashboard statistics - Using API
@@ -345,6 +351,129 @@ async function loadStudents() {
         }
     }
 }
+
+// Subject Management Functions
+let subjectsList = [];
+
+// Load subjects
+async function loadSubjects() {
+    try {
+        const response = await apiRequest('/subjects');
+        subjectsList = response.data;
+        
+        const tbody = document.getElementById('subjectsTableBody');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+        
+        subjectsList.forEach(subject => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><strong>${subject.code}</strong></td>
+                <td>${subject.name}</td>
+                <td>${subject.department}</td>
+                <td>Semester ${subject.semester}</td>
+                <td>${subject.teacherId?.name || 'Not Assigned'}</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="deleteSubject('${subject._id}')">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+        
+        // Also load teachers for dropdown
+        loadTeachersForDropdown();
+        
+    } catch (error) {
+        console.error('Error loading subjects:', error);
+        showToast('Error loading subjects', 'error');
+    }
+}
+
+// Load teachers for dropdown
+async function loadTeachersForDropdown() {
+    try {
+        const response = await apiRequest('/admin/teachers');
+        const teachers = response.data;
+        
+        const teacherSelect = document.getElementById('subjectTeacher');
+        if (!teacherSelect) return;
+        
+        teacherSelect.innerHTML = '<option value="">Select Teacher</option>';
+        teachers.forEach(teacher => {
+            const option = document.createElement('option');
+            option.value = teacher._id;
+            option.textContent = `${teacher.name} (${teacher.department})`;
+            teacherSelect.appendChild(option);
+        });
+        
+    } catch (error) {
+        console.error('Error loading teachers:', error);
+    }
+}
+
+// Add new subject
+async function addSubject() {
+    const name = document.getElementById('subjectName').value.trim();
+    const code = document.getElementById('subjectCode').value.trim().toUpperCase();
+    const department = document.getElementById('subjectDepartment').value;
+    const semester = document.getElementById('subjectSemester').value;
+    const teacherId = document.getElementById('subjectTeacher').value;
+    
+    if (!name || !code) {
+        showToast('Please fill subject name and code', 'error');
+        return;
+    }
+    
+    try {
+        showLoading();
+        
+        const response = await apiRequest('/subjects', {
+            method: 'POST',
+            body: JSON.stringify({ name, code, department, semester, teacherId })
+        });
+        
+        if (response.success) {
+            showToast('Subject added successfully', 'success');
+            
+            // Clear form
+            document.getElementById('subjectName').value = '';
+            document.getElementById('subjectCode').value = '';
+            
+            // Reload subjects
+            await loadSubjects();
+        }
+        
+    } catch (error) {
+        console.error('Error adding subject:', error);
+        showToast(error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Delete subject
+async function deleteSubject(subjectId) {
+    if (!confirm('Are you sure you want to delete this subject? This will affect attendance records.')) return;
+    
+    try {
+        showLoading();
+        
+        await apiRequest(`/subjects/${subjectId}`, { method: 'DELETE' });
+        
+        showToast('Subject deleted successfully', 'success');
+        await loadSubjects();
+        
+    } catch (error) {
+        console.error('Error deleting subject:', error);
+        showToast(error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
 
 // Filter students - Using API
 async function filterStudents() {

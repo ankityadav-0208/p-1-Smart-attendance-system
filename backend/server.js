@@ -5,6 +5,8 @@ const dotenv = require('dotenv');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const subjectRoutes = require('./routes/subjects');
+const analyticsRoutes = require('./routes/analytics');
 
 // Load env vars
 dotenv.config();
@@ -44,6 +46,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/subjects', subjectRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // ✅ Test endpoint to verify API is working
 app.get('/api/health', (req, res) => {

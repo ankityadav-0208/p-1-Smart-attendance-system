@@ -1387,3 +1387,25 @@ body.dark-mode tr:hover {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--primary-dark);
 }
+
+/* Subject Analytics Styles */
+.subject-cards .glass-effect {
+    transition: transform 0.2s;
+}
+
+.subject-cards .glass-effect:hover {
+    transform: translateY(-3px);
+}
+
+/* Status colors */
+.subject-card-good {
+    border-left-color: #28a745;
+}
+
+.subject-card-warning {
+    border-left-color: #ffc107;
+}
+
+.subject-card-critical {
+    border-left-color: #dc3545;
+}

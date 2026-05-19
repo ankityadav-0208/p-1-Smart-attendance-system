@@ -85,7 +85,7 @@ async function loadStudentData() {
     if (profileJoinedElem && user.createdAt) profileJoinedElem.textContent = new Date(user.createdAt).toLocaleDateString();
 }
 
-// Show different sections
+// Show different sections - UPDATED
 function showSection(section) {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
@@ -96,11 +96,13 @@ function showSection(section) {
     const titles = {
         overview: 'Overview',
         history: 'Attendance History',
+        subjectAnalytics: 'Subject Analytics',
         profile: 'Profile'
     };
     document.getElementById('pageTitle').textContent = titles[section];
     
     if (section === 'history') loadAttendanceHistory();
+    if (section === 'subjectAnalytics') loadSubjectAnalytics();
 }
 
 // Load dashboard statistics - Using API
@@ -227,6 +229,201 @@ async function loadAttendanceHistory() {
         showToast('Error loading attendance history', 'error');
     }
 }
+
+// Subject Analytics Variables
+let subjectChart = null;
+let currentSubjectData = [];
+
+// Load subject analytics
+async function loadSubjectAnalytics() {
+    try {
+        console.log('📊 Loading subject analytics...');
+        
+        const response = await apiRequest('/student/subject-attendance');
+        const subjects = response.data;
+        
+        console.log('Subjects data:', subjects);
+        
+        currentSubjectData = subjects;
+        
+        // Populate subject filter
+        const subjectFilter = document.getElementById('subjectFilter');
+        if (subjectFilter) {
+            subjectFilter.innerHTML = '<option value="all">All Subjects</option>';
+            subjects.forEach(subject => {
+                const option = document.createElement('option');
+                option.value = subject.subjectId;
+                option.textContent = `${subject.subjectName} (${subject.subjectCode}) - ${subject.percentage}%`;
+                subjectFilter.appendChild(option);
+            });
+        }
+        
+        // Render charts
+        renderSubjectChart(subjects);
+        renderSubjectCards(subjects);
+        
+    } catch (error) {
+        console.error('Error loading subject analytics:', error);
+        showToast('Error loading subject analytics', 'error');
+    }
+}
+
+// Render subject-wise bar chart
+function renderSubjectChart(subjects) {
+    const ctx = document.getElementById('subjectChart');
+    if (!ctx) return;
+    
+    const canvas = ctx.getContext('2d');
+    
+    // Destroy existing chart
+    if (subjectChart) {
+        subjectChart.destroy();
+    }
+    
+    // Prepare data
+    const labels = subjects.map(s => `${s.subjectName}\n(${s.subjectCode})`);
+    const percentages = subjects.map(s => parseFloat(s.percentage));
+    const attended = subjects.map(s => s.attended);
+    const total = subjects.map(s => s.total);
+    
+    // Color based on percentage
+    const backgroundColors = percentages.map(p => {
+        if (p >= 75) return 'rgba(40, 167, 69, 0.7)';  // Green - Good
+        if (p >= 60) return 'rgba(255, 193, 7, 0.7)'; // Yellow - Warning
+        return 'rgba(220, 53, 69, 0.7)';              // Red - Critical
+    });
+    
+    subjectChart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Attendance Percentage (%)',
+                data: percentages,
+                backgroundColor: backgroundColors,
+                borderColor: '#333',
+                borderWidth: 1,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 0 },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    title: {
+                        display: true,
+                        text: 'Attendance (%)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Subjects'
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const subject = subjects[context.dataIndex];
+                            return [
+                                `Attendance: ${subject.percentage}%`,
+                                `Classes Attended: ${subject.attended}`,
+                                `Total Classes: ${subject.total}`
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Render subject performance cards
+function renderSubjectCards(subjects) {
+    const container = document.getElementById('subjectCards');
+    if (!container) return;
+    
+    if (subjects.length === 0) {
+        container.innerHTML = '<div class="glass-effect" style="padding: 20px; text-align: center;">No subjects found</div>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    subjects.forEach(subject => {
+        const percentage = parseFloat(subject.percentage);
+        let statusClass = 'good';
+        let statusText = 'Good';
+        
+        if (percentage < 60) {
+            statusClass = 'critical';
+            statusText = 'Critical! Needs Improvement';
+        } else if (percentage < 75) {
+            statusClass = 'warning';
+            statusText = 'Warning! Below 75%';
+        } else {
+            statusClass = 'good';
+            statusText = 'Good ✅';
+        }
+        
+        const card = document.createElement('div');
+        card.className = 'glass-effect';
+        card.style.padding = '15px';
+        card.style.borderRadius = '10px';
+        card.style.borderLeft = `4px solid ${percentage >= 75 ? '#28a745' : (percentage >= 60 ? '#ffc107' : '#dc3545')}`;
+        
+        card.innerHTML = `
+            <h4 style="margin: 0 0 5px 0;">${subject.subjectName}</h4>
+            <p style="color: #666; font-size: 12px; margin-bottom: 10px;">${subject.subjectCode} | ${subject.department || 'General'}</p>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <span style="font-size: 24px; font-weight: bold; color: ${percentage >= 75 ? '#28a745' : (percentage >= 60 ? '#ffc107' : '#dc3545')};">${percentage}%</span>
+                    <span style="font-size: 12px; color: #666;"> attendance</span>
+                </div>
+                <div style="text-align: right;">
+                    <div>Attended: ${subject.attended}</div>
+                    <div>Total: ${subject.total}</div>
+                </div>
+            </div>
+            <div style="margin-top: 10px;">
+                <span style="font-size: 12px; color: ${percentage >= 75 ? '#28a745' : (percentage >= 60 ? '#856404' : '#dc3545')};">${statusText}</span>
+            </div>
+        `;
+        
+        container.appendChild(card);
+    });
+}
+
+// Filter subject attendance
+async function filterSubjectAttendance() {
+    const subjectId = document.getElementById('subjectFilter')?.value || 'all';
+    const semester = document.getElementById('semesterFilter')?.value || 'all';
+    
+    let filteredData = [...currentSubjectData];
+    
+    if (semester !== 'all') {
+        // Note: You'll need to add semester field to subjects for this to work
+        // filteredData = filteredData.filter(s => s.semester == semester);
+    }
+    
+    renderSubjectChart(filteredData);
+    renderSubjectCards(filteredData);
+}
+
+// Update showSection to include subjectAnalytics
+// Add this case in your existing showSection function:
+// if (section === 'subjectAnalytics') loadSubjectAnalytics();
 
 // Filter history by month
 async function filterHistory() {

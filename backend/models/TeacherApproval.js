@@ -40,5 +40,4 @@ const TeacherApprovalSchema = new mongoose.Schema({
     }
 });
 
-// ✅ FIXED: Check if model already exists before creating
 module.exports = mongoose.models.TeacherApproval || mongoose.model('TeacherApproval', TeacherApprovalSchema);

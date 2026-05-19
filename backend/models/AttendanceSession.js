@@ -33,8 +33,12 @@ const AttendanceSessionSchema = new mongoose.Schema({
     expiresAt: {
         type: Date,
         default: () => new Date(+new Date() + 5 * 60000) // 5 minutes from now
+    },
+    // ✅ NEW FIELD - Subject for this session
+    subjectId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Subject'
     }
 });
 
-// ✅ FIXED: Check if model already exists before creating
 module.exports = mongoose.models.AttendanceSession || mongoose.model('AttendanceSession', AttendanceSessionSchema);

@@ -54,6 +54,9 @@ async function loadTeacherData() {
     if (user.profilePhotoURL) {
         document.getElementById('profileImage').src = user.profilePhotoURL;
     }
+    
+    // ✅ Load subjects for dropdown
+    await loadTeacherSubjects();
 }
 
 // Setup settings page
@@ -76,12 +79,14 @@ function showSection(section) {
         overview: 'Overview',
         attendance: 'Attendance Records',
         students: 'My Students',
+        subjectAnalytics: 'Subject Analytics',
         settings: 'Settings'
     };
     document.getElementById('pageTitle').textContent = titles[section];
     
     if (section === 'attendance') loadAttendanceRecords();
     if (section === 'students') loadStudents();
+    if (section === 'subjectAnalytics') loadTeacherSubjectAnalytics();
 }
 
 // Load dashboard statistics - Using API
@@ -121,10 +126,326 @@ async function loadDashboardStats() {
     }
 }
 
-// Start attendance session - Using API
+// Subject Analytics Variables
+let teacherSubjectChart = null;
+let departmentChart = null;
+let teacherSubjectData = [];
+
+// Load teacher subject analytics
+async function loadTeacherSubjectAnalytics() {
+    try {
+        console.log('📊 Loading teacher subject analytics...');
+        
+        const response = await apiRequest('/analytics/subject-attendance');
+        const subjects = response.data;
+        
+        console.log('Subjects data:', subjects);
+        
+        teacherSubjectData = subjects;
+        
+        // Populate subject filter
+        const subjectFilter = document.getElementById('subjectFilter');
+        if (subjectFilter) {
+            subjectFilter.innerHTML = '<option value="all">All Subjects</option>';
+            subjects.forEach(subject => {
+                const option = document.createElement('option');
+                option.value = subject.subjectId;
+                option.textContent = `${subject.subjectName} (${subject.subjectCode}) - ${subject.averageAttendance}%`;
+                subjectFilter.appendChild(option);
+            });
+        }
+        
+        // Render charts
+        renderTeacherSubjectChart(subjects);
+        renderDepartmentChart(subjects);
+        renderTeacherSubjectCards(subjects);
+        renderLowAttendanceAlert(subjects);
+        
+    } catch (error) {
+        console.error('Error loading teacher subject analytics:', error);
+        showToast('Error loading subject analytics', 'error');
+    }
+}
+
+// Render subject-wise bar chart for teacher
+function renderTeacherSubjectChart(subjects) {
+    const canvas = document.getElementById('teacherSubjectChart');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    
+    if (teacherSubjectChart) {
+        teacherSubjectChart.destroy();
+    }
+    
+    const labels = subjects.map(s => s.subjectName);
+    const percentages = subjects.map(s => parseFloat(s.averageAttendance));
+    
+    const backgroundColors = percentages.map(p => {
+        if (p >= 75) return 'rgba(40, 167, 69, 0.7)';
+        if (p >= 60) return 'rgba(255, 193, 7, 0.7)';
+        return 'rgba(220, 53, 69, 0.7)';
+    });
+    
+    teacherSubjectChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Average Attendance (%)',
+                data: percentages,
+                backgroundColor: backgroundColors,
+                borderColor: '#333',
+                borderWidth: 1,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 0 },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    title: { display: true, text: 'Attendance (%)' }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const subject = subjects[context.dataIndex];
+                            return [
+                                `Average: ${subject.averageAttendance}%`,
+                                `Total Students: ${subject.totalStudents}`,
+                                `Total Sessions: ${subject.totalSessions}`
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Render department-wise chart
+function renderDepartmentChart(subjects) {
+    const canvas = document.getElementById('departmentChart');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    
+    if (departmentChart) {
+        departmentChart.destroy();
+    }
+    
+    // Group by department
+    const deptMap = new Map();
+    subjects.forEach(subject => {
+        const dept = subject.department || 'General';
+        if (!deptMap.has(dept)) {
+            deptMap.set(dept, { total: 0, count: 0 });
+        }
+        const current = deptMap.get(dept);
+        current.total += parseFloat(subject.averageAttendance);
+        current.count++;
+    });
+    
+    const departments = Array.from(deptMap.keys());
+    const averages = departments.map(dept => 
+        (deptMap.get(dept).total / deptMap.get(dept).count).toFixed(1)
+    );
+    
+    departmentChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: departments,
+            datasets: [{
+                label: 'Average Attendance by Department (%)',
+                data: averages,
+                backgroundColor: '#4a90e2',
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 0 },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    title: { display: true, text: 'Attendance (%)' }
+                }
+            }
+        }
+    });
+}
+
+// Render subject performance cards for teacher
+function renderTeacherSubjectCards(subjects) {
+    const container = document.getElementById('teacherSubjectCards');
+    if (!container) return;
+    
+    if (subjects.length === 0) {
+        container.innerHTML = '<div class="glass-effect" style="padding: 20px; text-align: center;">No subjects found</div>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    subjects.forEach(subject => {
+        const percentage = parseFloat(subject.averageAttendance);
+        let statusClass = 'good';
+        let statusText = 'Good';
+        
+        if (percentage < 60) {
+            statusClass = 'critical';
+            statusText = 'Critical - Needs Improvement';
+        } else if (percentage < 75) {
+            statusClass = 'warning';
+            statusText = 'Warning - Below Target';
+        } else {
+            statusClass = 'good';
+            statusText = 'On Target';
+        }
+        
+        const card = document.createElement('div');
+        card.className = 'glass-effect';
+        card.style.padding = '15px';
+        card.style.borderRadius = '10px';
+        card.style.borderLeft = `4px solid ${percentage >= 75 ? '#28a745' : (percentage >= 60 ? '#ffc107' : '#dc3545')}`;
+        
+        card.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <h4 style="margin: 0 0 5px 0;">${subject.subjectName}</h4>
+                    <p style="color: #666; font-size: 12px;">${subject.subjectCode} | Semester ${subject.semester}</p>
+                    <p style="color: #666; font-size: 12px;">Department: ${subject.department}</p>
+                </div>
+                <div style="text-align: right;">
+                    <span style="font-size: 28px; font-weight: bold; color: ${percentage >= 75 ? '#28a745' : (percentage >= 60 ? '#ffc107' : '#dc3545')};">${percentage}%</span>
+                </div>
+            </div>
+            <div style="margin-top: 10px; display: flex; justify-content: space-between;">
+                <div>Students: ${subject.totalStudents}</div>
+                <div>Sessions: ${subject.totalSessions}</div>
+                <div>Present: ${subject.totalPresent}</div>
+            </div>
+            <div style="margin-top: 8px;">
+                <span style="font-size: 12px; color: ${percentage >= 75 ? '#28a745' : (percentage >= 60 ? '#856404' : '#dc3545')};">Status: ${statusText}</span>
+            </div>
+        `;
+        
+        container.appendChild(card);
+    });
+}
+
+// Render low attendance alert
+function renderLowAttendanceAlert(subjects) {
+    const container = document.getElementById('lowAttendanceList');
+    if (!container) return;
+    
+    const lowSubjects = subjects.filter(s => parseFloat(s.averageAttendance) < 75);
+    
+    if (lowSubjects.length === 0) {
+        container.innerHTML = '<p class="text-success">✅ All subjects have attendance above 75%</p>';
+        document.getElementById('lowAttendanceAlert').style.background = '#d4edda';
+        document.getElementById('lowAttendanceAlert').style.borderColor = '#c3e6cb';
+        return;
+    }
+    
+    document.getElementById('lowAttendanceAlert').style.background = '#fff3cd';
+    document.getElementById('lowAttendanceAlert').style.borderColor = '#ffeeba';
+    
+    container.innerHTML = lowSubjects.map(subject => `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #ffeeba;">
+            <div>
+                <strong>${subject.subjectName}</strong> (${subject.subjectCode})
+            </div>
+            <div style="color: #dc3545; font-weight: bold;">
+                ${subject.averageAttendance}% 
+                <span style="font-size: 12px;">(Need ${(75 - parseFloat(subject.averageAttendance)).toFixed(1)}% improvement)</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Filter teacher subject attendance
+async function filterTeacherSubjectAttendance() {
+    const subjectId = document.getElementById('subjectFilter')?.value || 'all';
+    
+    let filteredData = [...teacherSubjectData];
+    
+    if (subjectId !== 'all') {
+        filteredData = filteredData.filter(s => s.subjectId === subjectId);
+    }
+    
+    renderTeacherSubjectChart(filteredData);
+    renderTeacherSubjectCards(filteredData);
+}
+
+// Load subjects for dropdown
+async function loadTeacherSubjects() {
+    try {
+        const response = await apiRequest('/teacher/subjects');
+        const subjects = response.data || [];
+        
+        const subjectSelect = document.getElementById('sessionSubject');
+        if (!subjectSelect) return;
+        
+        subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+        
+        subjects.forEach(subject => {
+            const option = document.createElement('option');
+            option.value = subject._id;
+            option.textContent = `${subject.name} (${subject.code}) - Semester ${subject.semester}`;
+            subjectSelect.appendChild(option);
+        });
+        
+    } catch (error) {
+        console.error('Error loading subjects:', error);
+    }
+}
+
+// This function can be used to update existing attendance records with subject info
+// Run this once after deployment
+async function updateExistingAttendanceWithSubject() {
+    try {
+        console.log('Updating existing attendance records with subject info...');
+        
+        const recordsResponse = await apiRequest('/teacher/attendance-records');
+        const records = recordsResponse.data || [];
+        
+        let updated = 0;
+        
+        for (const record of records) {
+            // Get session to find subject
+            const session = await apiRequest(`/teacher/active-sessions`);
+            // Note: This requires a session lookup endpoint
+        }
+        
+        console.log(`Updated ${updated} records`);
+    } catch (error) {
+        console.error('Error updating records:', error);
+    }
+}
+
+// Start attendance session - Using API (WITH SUBJECT)
 async function startAttendance() {
     try {
         const user = JSON.parse(sessionStorage.getItem('currentUser'));
+        
+        // Get selected subject
+        const subjectSelect = document.getElementById('sessionSubject');
+        const subjectId = subjectSelect?.value;
+        const subjectName = subjectSelect?.options[subjectSelect.selectedIndex]?.text || 'No Subject';
+        
+        if (!subjectId) {
+            showToast('Please select a subject before starting attendance', 'warning');
+            return;
+        }
         
         // Get classroom location from user or default
         const classroomLocation = {
@@ -132,11 +453,14 @@ async function startAttendance() {
             longitude: 75.735818
         };
         
+        console.log('📤 Starting attendance session for subject:', subjectName);
+        
         const response = await apiRequest('/teacher/start-session', {
             method: 'POST',
             body: JSON.stringify({ 
                 classroomLocation,
-                allowedRadius: 1000
+                allowedRadius: 1000,
+                subjectId: subjectId  // ✅ Include subject ID
             })
         });
 
@@ -144,7 +468,9 @@ async function startAttendance() {
         currentSession = {
             id: sessionData.sessionId,
             sessionToken: sessionData.sessionToken,
-            expiresAt: sessionData.expiresAt
+            expiresAt: sessionData.expiresAt,
+            subjectId: subjectId,
+            subjectName: subjectName
         };
 
         generateQRCode(sessionData.sessionId, sessionData.sessionToken);
@@ -154,10 +480,15 @@ async function startAttendance() {
         
         document.getElementById('qrContainer').classList.remove('hidden');
         document.getElementById('sessionId').textContent = sessionData.sessionId;
+        document.getElementById('sessionSubjectName').textContent = subjectName;
         
         startQRTimer();
         
-        showToast('Attendance session started', 'success');
+        showToast(`Attendance session started for ${subjectName}`, 'success');
+        
+        // Disable subject selection during active session
+        subjectSelect.disabled = true;
+        
     } catch (error) {
         console.error('Error starting session:', error);
         showToast('Failed to start session: ' + error.message, 'error');
@@ -230,10 +561,16 @@ async function stopAttendance() {
         document.querySelector('button[onclick="startAttendance()"]').disabled = false;
         document.getElementById('qrContainer').classList.add('hidden');
         
+        // ✅ Re-enable subject selection
+        const subjectSelect = document.getElementById('sessionSubject');
+        if (subjectSelect) subjectSelect.disabled = false;
+        
         showToast('Attendance session ended', 'info');
         
         loadDashboardStats();
         loadAttendanceRecords();
+        loadTeacherSubjects(); // Refresh subjects (in case any were added)
+        
     } catch (error) {
         console.error('Error stopping session:', error);
         showToast('Failed to stop session', 'error');
@@ -451,6 +788,8 @@ async function filterStudents() {
         console.error('Error filtering students:', error);
     }
 }
+
+
 
 // View selfie
 function viewSelfie(url) {

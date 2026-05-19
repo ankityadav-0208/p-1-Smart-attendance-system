@@ -32,9 +32,9 @@
                     <i class="fas fa-user-clock"></i> Pending Approvals
                     <span class="badge" id="pendingCount">0</span>
                 </a>
-                <!-- <a href="#" onclick="showSection('reports')">
-                    <i class="fas fa-chart-bar"></i> Reports
-                </a> -->
+                <a href="#" onclick="showSection('subjects')">
+                    <i class="fas fa-book"></i> Subjects
+                </a>
                 <a href="#" onclick="showSection('settings')">
                     <i class="fas fa-cog"></i> Settings
                 </a>
@@ -89,15 +89,6 @@
                         </div>
                     </div>
                     
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-calendar-check"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3>Total Sessions</h3>
-                            <span class="stat-number" id="totalSessions">0</span>
-                        </div>
-                    </div>
                 </div>
 
                 <div class="chart-container glass-effect">
@@ -172,6 +163,77 @@
                         </thead>
                         <tbody id="approvalsTableBody">
                             <tr><td colspan="6" style="text-align: center;">Loading approvals...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Subjects Management Section -->
+            <div id="subjectsSection" class="section">
+                <h3>Subject Management</h3>
+                
+                <div class="glass-effect" style="padding: 20px; margin-bottom: 20px;">
+                    <h4>Add New Subject</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Subject Name</label>
+                            <input type="text" id="subjectName" placeholder="e.g., Computer Science">
+                        </div>
+                        <div class="form-group">
+                            <label>Subject Code</label>
+                            <input type="text" id="subjectCode" placeholder="e.g., CS101" style="text-transform: uppercase;">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Department</label>
+                            <select id="subjectDepartment">
+                                <option value="Computer Science">Computer Science</option>
+                                <option value="Engineering">Engineering</option>
+                                <option value="Mathematics">Mathematics</option>
+                                <option value="Physics">Physics</option>
+                                <option value="Chemistry">Chemistry</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Semester</label>
+                            <select id="subjectSemester">
+                                <option value="1">Semester 1</option>
+                                <option value="2">Semester 2</option>
+                                <option value="3">Semester 3</option>
+                                <option value="4">Semester 4</option>
+                                <option value="5">Semester 5</option>
+                                <option value="6">Semester 6</option>
+                                <option value="7">Semester 7</option>
+                                <option value="8">Semester 8</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Assigned Teacher (Optional)</label>
+                        <select id="subjectTeacher">
+                            <option value="">Select Teacher</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="addSubject()">
+                        <i class="fas fa-plus"></i> Add Subject
+                    </button>
+                </div>
+                
+                <div class="table-container">
+                    <table id="subjectsTable">
+                        <thead>
+                            <tr>
+                                <th>Subject Code</th>
+                                <th>Subject Name</th>
+                                <th>Department</th>
+                                <th>Semester</th>
+                                <th>Assigned Teacher</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subjectsTableBody">
+                            <!-- Filled dynamically -->
                         </tbody>
                     </table>
                 </div>

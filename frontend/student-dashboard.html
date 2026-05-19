@@ -25,6 +25,9 @@
                 <a href="#" onclick="showSection('history')">
                     <i class="fas fa-history"></i> Attendance History
                 </a>
+                <a href="#" onclick="showSection('subjectAnalytics')">
+                    <i class="fas fa-chart-pie"></i> Subject Analytics
+                </a>
                 <a href="#" onclick="showSection('profile')">
                     <i class="fas fa-user"></i> Profile
                 </a>
@@ -155,6 +158,40 @@
                             <!-- Filled dynamically -->
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- Subject-wise Attendance Section -->
+            <div id="subjectAnalyticsSection" class="section">
+                <h3>Subject-wise Attendance Analytics</h3>
+                
+                <!-- Subject Filter -->
+                <div class="filters" style="margin-bottom: 20px;">
+                    <select id="subjectFilter" onchange="filterSubjectAttendance()">
+                        <option value="all">All Subjects</option>
+                    </select>
+                    <select id="semesterFilter" onchange="filterSubjectAttendance()">
+                        <option value="all">All Semesters</option>
+                        <option value="1">Semester 1</option>
+                        <option value="2">Semester 2</option>
+                        <option value="3">Semester 3</option>
+                        <option value="4">Semester 4</option>
+                        <option value="5">Semester 5</option>
+                        <option value="6">Semester 6</option>
+                        <option value="7">Semester 7</option>
+                        <option value="8">Semester 8</option>
+                    </select>
+                </div>
+                
+                <!-- Subject-wise Bar Chart -->
+                <div class="chart-container glass-effect">
+                    <h4>Attendance by Subject</h4>
+                    <canvas id="subjectChart"></canvas>
+                </div>
+                
+                <!-- Subject-wise Performance Cards -->
+                <div class="subject-cards" id="subjectCards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 20px;">
+                    <!-- Dynamically populated -->
                 </div>
             </div>
 

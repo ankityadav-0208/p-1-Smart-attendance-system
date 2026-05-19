@@ -29,9 +29,9 @@
                 <a href="#" onclick="showSection('students')">
                     <i class="fas fa-users"></i> Students
                 </a>
-                <!-- <a href="#" onclick="showSection('reports')">
-                    <i class="fas fa-chart-bar"></i> Reports
-                </a> -->
+                <a href="#" onclick="showSection('subjectAnalytics')">
+                    <i class="fas fa-chart-pie"></i> Subject Analytics
+                </a>
                 <a href="#" onclick="showSection('settings')">
                     <i class="fas fa-cog"></i> Settings
                 </a>
@@ -100,6 +100,15 @@
                 <!-- QR Code Section -->
                 <div class="qr-section glass-effect">
                     <h3>Start Attendance Session</h3>
+                    
+                    <!-- ✅ ADD SUBJECT SELECTION DROPDOWN -->
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label for="sessionSubject">Select Subject</label>
+                        <select id="sessionSubject" class="form-control" style="width: 100%; padding: 10px; border-radius: 5px;">
+                            <option value="">-- Select Subject --</option>
+                        </select>
+                    </div>
+                    
                     <div class="qr-controls">
                         <button class="btn btn-primary btn-large" onclick="startAttendance()">
                             <i class="fas fa-play"></i> Start Attendance
@@ -113,6 +122,7 @@
                         <div id="qrcode"></div>
                         <p class="qr-timer">QR expires in: <span id="qrTimer">5:00</span></p>
                         <p class="qr-info">Session ID: <span id="sessionId"></span></p>
+                        <p class="qr-info">Subject: <span id="sessionSubjectName"></span></p>
                         <p class="qr-info">Students marked: <span id="markedCount">0</span></p>
                     </div>
                 </div>
@@ -170,6 +180,63 @@
                             <!-- Filled dynamically -->
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- Subject Analytics Section -->
+            <div id="subjectAnalyticsSection" class="section">
+                <h3>Subject-wise Attendance Analytics</h3>
+                
+                <!-- Filters -->
+                <div class="filters" style="margin-bottom: 20px;">
+                    <select id="subjectFilter" onchange="filterTeacherSubjectAttendance()">
+                        <option value="all">All Subjects</option>
+                    </select>
+                    <select id="departmentFilter" onchange="filterTeacherSubjectAttendance()">
+                        <option value="all">All Departments</option>
+                        <option value="Computer Science">Computer Science</option>
+                        <option value="Engineering">Engineering</option>
+                        <option value="Mathematics">Mathematics</option>
+                        <option value="Physics">Physics</option>
+                        <option value="Chemistry">Chemistry</option>
+                    </select>
+                    <select id="semesterFilter" onchange="filterTeacherSubjectAttendance()">
+                        <option value="all">All Semesters</option>
+                        <option value="1">Semester 1</option>
+                        <option value="2">Semester 2</option>
+                        <option value="3">Semester 3</option>
+                        <option value="4">Semester 4</option>
+                        <option value="5">Semester 5</option>
+                        <option value="6">Semester 6</option>
+                        <option value="7">Semester 7</option>
+                        <option value="8">Semester 8</option>
+                    </select>
+                </div>
+                
+                <!-- Charts Grid -->
+                <div class="analytics-grid">
+                    <!-- Subject-wise Bar Chart -->
+                    <div class="analytics-card glass-effect">
+                        <h4>Attendance by Subject</h4>
+                        <canvas id="teacherSubjectChart" style="height: 300px;"></canvas>
+                    </div>
+                    
+                    <!-- Average Attendance by Department -->
+                    <div class="analytics-card glass-effect">
+                        <h4>Average by Department</h4>
+                        <canvas id="departmentChart" style="height: 300px;"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Subject Performance Cards -->
+                <div class="subject-cards" id="teacherSubjectCards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-top: 20px;">
+                    <!-- Dynamically populated -->
+                </div>
+                
+                <!-- Low Attendance Alert -->
+                <div id="lowAttendanceAlert" class="glass-effect" style="margin-top: 20px; padding: 15px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 10px;">
+                    <h4><i class="fas fa-exclamation-triangle" style="color: #856404;"></i> Low Attendance Alert</h4>
+                    <div id="lowAttendanceList"></div>
                 </div>
             </div>
 

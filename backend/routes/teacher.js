@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const User = require('../models/User');
 const AttendanceSession = require('../models/AttendanceSession');
 const AttendanceRecord = require('../models/AttendanceRecord');
+const Subject = require('../models/Subject');
 const { protect, authorize } = require('../middleware/auth');
 
 // All routes require teacher or admin role
@@ -218,6 +219,75 @@ router.get('/report', async (req, res) => {
             success: false,
             message: 'Server error'
         });
+    }
+});
+
+// @desc    Get all subjects for teacher
+// @route   GET /api/teacher/subjects
+router.get('/subjects', async (req, res) => {
+    try {
+        let query = {};
+        if (req.user.role !== 'admin') {
+            query.teacherId = req.user.id;
+        }
+        const subjects = await Subject.find(query).sort('name');
+        res.json({ success: true, data: subjects });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// @desc    Start attendance session
+// @route   POST /api/teacher/start-session
+router.post('/start-session', async (req, res) => {
+    try {
+        const { classroomLocation, allowedRadius, subjectId } = req.body;
+
+        const session = await AttendanceSession.create({
+            createdBy: req.user.id,
+            sessionToken: uuidv4(),
+            classroomLocation,
+            allowedRadius: allowedRadius || 1000,
+            expiresAt: new Date(Date.now() + 5 * 60000),
+            subjectId: subjectId || null  // ✅ NEW
+        });
+
+        res.json({
+            success: true,
+            data: {
+                sessionId: session._id,
+                sessionToken: session.sessionToken,
+                expiresAt: session.expiresAt
+            }
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+});
+
+// ... rest of the routes remain the same
+// (stop-session, active-sessions, attendance-records, students, report)
+
+
+// @desc    Get all subjects for teacher
+// @route   GET /api/teacher/subjects
+router.get('/subjects', async (req, res) => {
+    try {
+        let query = {};
+        if (req.user.role !== 'admin') {
+            query.teacherId = req.user.id;
+        }
+        const subjects = await Subject.find(query).populate('teacherId', 'name').sort('name');
+        res.json({ success: true, data: subjects });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 

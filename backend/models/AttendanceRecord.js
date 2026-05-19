@@ -23,8 +23,8 @@ const AttendanceRecordSchema = new mongoose.Schema({
     },
     selfieUrl: {
         type: String,
-        default: '',  // Changed from 'required: true' to optional with default
-        required: false  // Make it optional
+        default: '',
+        required: false
     },
     deviceId: {
         type: String,
@@ -35,6 +35,11 @@ const AttendanceRecordSchema = new mongoose.Schema({
     },
     userAgent: {
         type: String
+    },
+    // ✅ NEW FIELD - Subject for this attendance
+    subjectId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Subject'
     }
 }, {
     timestamps: true
@@ -43,5 +48,4 @@ const AttendanceRecordSchema = new mongoose.Schema({
 // Ensure one student per session (unique compound index)
 AttendanceRecordSchema.index({ studentId: 1, sessionId: 1 }, { unique: true });
 
-// ✅ FIXED: Check if model already exists before creating
 module.exports = mongoose.models.AttendanceRecord || mongoose.model('AttendanceRecord', AttendanceRecordSchema);

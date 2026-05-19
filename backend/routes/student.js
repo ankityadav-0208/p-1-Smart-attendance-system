@@ -97,7 +97,6 @@ router.post('/validate-session', async (req, res) => {
 });
 
 // @desc    Submit attendance without selfie
-// @route   POST /api/student/mark-attendance-without-selfie
 router.post('/mark-attendance-without-selfie', async (req, res) => {
     try {
         const { sessionId, location, distance } = req.body;
@@ -109,7 +108,7 @@ router.post('/mark-attendance-without-selfie', async (req, res) => {
             });
         }
 
-        // Get session
+        // Get session (this now includes subjectId)
         const session = await AttendanceSession.findById(sessionId);
         if (!session || !session.isActive) {
             return res.status(400).json({
@@ -139,12 +138,13 @@ router.post('/mark-attendance-without-selfie', async (req, res) => {
             });
         }
 
-        // Create attendance record without selfie
+        // Create attendance record with subject from session
         const record = await AttendanceRecord.create({
             studentId: req.user.id,
             sessionId: session._id,
+            subjectId: session.subjectId,  // ✅ Inherit subject from session
             location: location ? { ...location, distance } : null,
-            selfieUrl: '',  // Empty string for no selfie
+            selfieUrl: '',
             deviceId: getDeviceId(req),
             ipAddress: req.ip,
             userAgent: req.get('user-agent')
@@ -317,6 +317,119 @@ router.get('/stats', async (req, res) => {
             }
         });
 
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+});
+
+
+// @desc    Get student's subject-wise attendance
+// @route   GET /api/student/subject-attendance
+router.get('/subject-attendance', async (req, res) => {
+    try {
+        // Get all subjects
+        const subjects = await Subject.find();
+        
+        const subjectAttendance = [];
+        
+        for (const subject of subjects) {
+            // Get all sessions for this subject
+            const sessions = await AttendanceSession.find({
+                subjectId: subject._id,
+                isActive: false
+            });
+            
+            const totalSessions = sessions.length;
+            
+            // Get student's attendance for this subject
+            const records = await AttendanceRecord.find({
+                studentId: req.user.id,
+                subjectId: subject._id
+            });
+            
+            const attended = records.length;
+            const percentage = totalSessions > 0 
+                ? (attended / totalSessions * 100).toFixed(1) 
+                : 0;
+            
+            subjectAttendance.push({
+                subjectId: subject._id,
+                subjectName: subject.name,
+                subjectCode: subject.code,
+                department: subject.department,
+                attended,
+                total: totalSessions,
+                percentage
+            });
+        }
+        
+        res.json({
+            success: true,
+            data: subjectAttendance
+        });
+        
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+});
+
+// @desc    Get student's weekly subject trend
+// @route   GET /api/student/subject-trend
+router.get('/subject-trend', async (req, res) => {
+    try {
+        const { subjectId, weeks = 8 } = req.query;
+        
+        const records = await AttendanceRecord.find({
+            studentId: req.user.id,
+            subjectId: subjectId
+        }).sort('timestamp');
+        
+        // Group by week
+        const weeklyData = {};
+        const now = new Date();
+        
+        for (let i = weeks; i >= 0; i--) {
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - (i * 7));
+            const weekKey = weekStart.toISOString().split('T')[0];
+            weeklyData[weekKey] = { attended: 0, total: 0, weekStart };
+        }
+        
+        for (const record of records) {
+            const recordDate = new Date(record.timestamp);
+            for (const weekKey in weeklyData) {
+                const weekStart = weeklyData[weekKey].weekStart;
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekStart.getDate() + 7);
+                
+                if (recordDate >= weekStart && recordDate < weekEnd) {
+                    weeklyData[weekKey].attended++;
+                    weeklyData[weekKey].total++;
+                    break;
+                }
+            }
+        }
+        
+        const trend = Object.keys(weeklyData).map(week => ({
+            week: week,
+            attendanceRate: weeklyData[week].total > 0 
+                ? (weeklyData[week].attended / weeklyData[week].total * 100).toFixed(1)
+                : 0
+        }));
+        
+        res.json({
+            success: true,
+            data: trend
+        });
+        
     } catch (error) {
         console.error(error);
         res.status(500).json({
