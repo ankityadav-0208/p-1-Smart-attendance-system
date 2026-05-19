@@ -112,8 +112,6 @@ async function loadDashboardStats() {
         document.getElementById('totalStudents').textContent = stats.students || 0;
         document.getElementById('pendingApprovals').textContent = stats.pending || 0;
         document.getElementById('pendingCount').textContent = stats.pending || 0;
-        document.getElementById('totalSessions').textContent = stats.sessions || 0;
-
         setTimeout(() => {
             loadAdminChart();
         }, 200);
