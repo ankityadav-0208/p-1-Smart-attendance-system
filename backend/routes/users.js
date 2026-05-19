@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');        // ✅ Required for file upload
+const fs = require('fs');                // ✅ Required for creating directories
+const path = require('path');            // ✅ Required for file paths
 const User = require('../models/User');
 const { protect, authorize } = require('../middleware/auth');
+
 
 // @desc    Get all users (admin only)
 // @route   GET /api/users
