@@ -29,29 +29,24 @@ app.use(helmet());
 
 // Enable CORS
 app.use(cors({
-    origin: ['https://ankityadav-0208.github.io', 'http://localhost:5500'],
-    //origin: ['http://localhost:5500', 'http://127.0.0.1:5500', 'https://ankityadav-0208.github.io'],
-
-    credentials: true,
-    exposedHeaders: ['Content-Disposition']
+    origin: ['http://localhost:5500', 'http://127.0.0.1:5500', 'https://ankityadav-0208.github.io'],
+    credentials: true
 }));
 
-// Serve static files from uploads directory (add this after CORS setup)
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// Add a specific header for images
+// Serve static files from uploads directory with CORS headers
 app.use('/uploads', (req, res, next) => {
-    res.header('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.header('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Access-Control-Allow-Origin', '*');
     next();
-});
+}, express.static(path.join(__dirname, 'uploads')));
 
 // Rate limiting
 const limiter = rateLimit({
-    windowMs: 10 * 60 * 1000, // 10 minutes
+    windowMs: 10 * 60 * 1000,
     max: 100
 });
 app.use('/api/', limiter);
+
 
 // ✅ IMPORTANT: Mount API routes BEFORE static file serving
 app.use('/api/auth', authRoutes);
