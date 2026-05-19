@@ -44,6 +44,8 @@ async function loadStudentData() {
         return;
     }
 
+    console.log('Loading student data:', user);
+
     // Update sidebar
     const studentNameElem = document.getElementById('studentName');
     if (studentNameElem) studentNameElem.textContent = user.name;
@@ -60,27 +62,22 @@ async function loadStudentData() {
         if (profilePhotoElem) profilePhotoElem.src = user.profilePhotoURL;
     }
 
-    // Update profile details - USING CORRECT ELEMENT IDs
+    // Update profile details
     const profileNameElem = document.getElementById('profileName');
     if (profileNameElem) profileNameElem.textContent = user.name;
     
-    // Roll number - your HTML has id="profileRoll"
     const profileRollElem = document.getElementById('profileRoll');
     if (profileRollElem) profileRollElem.textContent = user.rollNumber || 'N/A';
     
-    // Section - your HTML has id="profileSectionText"
     const profileSectionElem = document.getElementById('profileSectionText');
     if (profileSectionElem) profileSectionElem.textContent = user.section || 'N/A';
     
-    // Email - your HTML has id="profileEmail"
     const profileEmailElem = document.getElementById('profileEmail');
     if (profileEmailElem) profileEmailElem.textContent = user.email;
     
-    // Device ID - your HTML has id="profileDeviceId"
     const profileDeviceIdElem = document.getElementById('profileDeviceId');
     if (profileDeviceIdElem) profileDeviceIdElem.textContent = user.deviceId ? user.deviceId.substring(0, 16) + '...' : 'N/A';
     
-    // Member Since - your HTML has id="profileJoined"
     const profileJoinedElem = document.getElementById('profileJoined');
     if (profileJoinedElem && user.createdAt) profileJoinedElem.textContent = new Date(user.createdAt).toLocaleDateString();
     
@@ -104,9 +101,11 @@ async function loadStudentData() {
     } catch (error) {
         console.error('Error loading profile stats:', error);
     }
+    
+    console.log('Profile data loaded successfully');
 }
 
-// Show different sections - UPDATED
+// Show different sections
 function showSection(section) {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
@@ -126,13 +125,13 @@ function showSection(section) {
     if (section === 'subjectAnalytics') loadSubjectAnalytics();
 }
 
-// Load dashboard statistics - Using API
+// Load dashboard statistics
 async function loadDashboardStats() {
     try {
         const response = await apiRequest('/student/stats');
         const stats = response.data;
         
-        console.log('Stats received:', stats); // Debug log
+        console.log('Stats received:', stats);
         
         const totalClassesElem = document.getElementById('totalClasses');
         if (totalClassesElem) totalClassesElem.textContent = stats.total || 0;
@@ -195,7 +194,7 @@ function loadStudentChart(dailyAttendance = {}) {
     });
 }
 
-// Load recent attendance - Using API
+// Load recent attendance
 async function loadRecentAttendance() {
     try {
         const response = await apiRequest('/student/history');
@@ -222,7 +221,7 @@ async function loadRecentAttendance() {
     }
 }
 
-// Load attendance history - Using API
+// Load attendance history
 async function loadAttendanceHistory() {
     try {
         const response = await apiRequest('/student/history');
@@ -251,7 +250,7 @@ async function loadAttendanceHistory() {
     }
 }
 
-// Photo upload functions
+// ============ PHOTO UPLOAD FUNCTIONS ============
 async function openPhotoUpload() {
     document.getElementById('photoModal').style.display = 'block';
     document.getElementById('photoPreview').src = '';
@@ -271,13 +270,11 @@ async function uploadProfilePhoto() {
         return;
     }
     
-    // Check file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
         showToast('Photo size should be less than 2MB', 'error');
         return;
     }
     
-    // Check file type
     if (!file.type.startsWith('image/')) {
         showToast('Please select an image file', 'error');
         return;
@@ -304,12 +301,10 @@ async function uploadProfilePhoto() {
             throw new Error(result.message || 'Upload failed');
         }
         
-        // Update local user data
         const user = JSON.parse(sessionStorage.getItem('currentUser'));
         user.profilePhotoURL = result.data.profilePhotoURL;
         sessionStorage.setItem('currentUser', JSON.stringify(user));
         
-        // Update UI
         const profileImage = document.getElementById('profileImage');
         if (profileImage) profileImage.src = result.data.profilePhotoURL;
         
@@ -347,12 +342,10 @@ async function removeProfilePhoto() {
             throw new Error(result.message || 'Failed to remove photo');
         }
         
-        // Update local user data
         const user = JSON.parse(sessionStorage.getItem('currentUser'));
         user.profilePhotoURL = '';
         sessionStorage.setItem('currentUser', JSON.stringify(user));
         
-        // Update UI
         const profileImage = document.getElementById('profileImage');
         if (profileImage) profileImage.src = '';
         
@@ -370,45 +363,10 @@ async function removeProfilePhoto() {
     }
 }
 
-// Update loadStudentData to include attendance summary
-// Add this to your existing loadStudentData function:
-async function loadStudentData() {
-    const user = JSON.parse(sessionStorage.getItem('currentUser'));
-    if (!user) {
-        window.location.href = 'index.html';
-        return;
-    }
-
-    // ... existing code ...
-    
-    // Load attendance summary for profile
-    try {
-        const statsResponse = await apiRequest('/student/stats');
-        const stats = statsResponse.data;
-        
-        const profileAttendance = document.getElementById('profileAttendance');
-        if (profileAttendance) profileAttendance.textContent = (stats.percentage || 0) + '%';
-        
-        const profileAttended = document.getElementById('profileAttended');
-        if (profileAttended) profileAttended.textContent = stats.attended || 0;
-        
-        const profileTotal = document.getElementById('profileTotal');
-        if (profileTotal) profileTotal.textContent = stats.total || 0;
-        
-        const profileRollBadge = document.getElementById('profileRollBadge');
-        if (profileRollBadge) profileRollBadge.textContent = `Roll: ${user.rollNumber || 'N/A'} | Section: ${user.section || 'N/A'}`;
-        
-    } catch (error) {
-        console.error('Error loading profile stats:', error);
-    }
-}
-
-
-// Subject Analytics Variables
+// ============ SUBJECT ANALYTICS ============
 let subjectChart = null;
 let currentSubjectData = [];
 
-// Load subject analytics
 async function loadSubjectAnalytics() {
     try {
         console.log('📊 Loading subject analytics...');
@@ -420,7 +378,6 @@ async function loadSubjectAnalytics() {
         
         currentSubjectData = subjects;
         
-        // Populate subject filter
         const subjectFilter = document.getElementById('subjectFilter');
         if (subjectFilter) {
             subjectFilter.innerHTML = '<option value="all">All Subjects</option>';
@@ -432,7 +389,6 @@ async function loadSubjectAnalytics() {
             });
         }
         
-        // Render charts
         renderSubjectChart(subjects);
         renderSubjectCards(subjects);
         
@@ -442,29 +398,23 @@ async function loadSubjectAnalytics() {
     }
 }
 
-// Render subject-wise bar chart
 function renderSubjectChart(subjects) {
     const ctx = document.getElementById('subjectChart');
     if (!ctx) return;
     
     const canvas = ctx.getContext('2d');
     
-    // Destroy existing chart
     if (subjectChart) {
         subjectChart.destroy();
     }
     
-    // Prepare data
     const labels = subjects.map(s => `${s.subjectName}\n(${s.subjectCode})`);
     const percentages = subjects.map(s => parseFloat(s.percentage));
-    const attended = subjects.map(s => s.attended);
-    const total = subjects.map(s => s.total);
     
-    // Color based on percentage
     const backgroundColors = percentages.map(p => {
-        if (p >= 75) return 'rgba(40, 167, 69, 0.7)';  // Green - Good
-        if (p >= 60) return 'rgba(255, 193, 7, 0.7)'; // Yellow - Warning
-        return 'rgba(220, 53, 69, 0.7)';              // Red - Critical
+        if (p >= 75) return 'rgba(40, 167, 69, 0.7)';
+        if (p >= 60) return 'rgba(255, 193, 7, 0.7)';
+        return 'rgba(220, 53, 69, 0.7)';
     });
     
     subjectChart = new Chart(canvas, {
@@ -488,21 +438,8 @@ function renderSubjectChart(subjects) {
                 y: {
                     beginAtZero: true,
                     max: 100,
-                    title: {
-                        display: true,
-                        text: 'Attendance (%)'
-                    },
-                    ticks: {
-                        callback: function(value) {
-                            return value + '%';
-                        }
-                    }
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Subjects'
-                    }
+                    title: { display: true, text: 'Attendance (%)' },
+                    ticks: { callback: value => value + '%' }
                 }
             },
             plugins: {
@@ -523,7 +460,6 @@ function renderSubjectChart(subjects) {
     });
 }
 
-// Render subject performance cards
 function renderSubjectCards(subjects) {
     const container = document.getElementById('subjectCards');
     if (!container) return;
@@ -537,19 +473,7 @@ function renderSubjectCards(subjects) {
     
     subjects.forEach(subject => {
         const percentage = parseFloat(subject.percentage);
-        let statusClass = 'good';
-        let statusText = 'Good';
-        
-        if (percentage < 60) {
-            statusClass = 'critical';
-            statusText = 'Critical! Needs Improvement';
-        } else if (percentage < 75) {
-            statusClass = 'warning';
-            statusText = 'Warning! Below 75%';
-        } else {
-            statusClass = 'good';
-            statusText = 'Good ✅';
-        }
+        let statusText = percentage >= 75 ? 'Good ✅' : (percentage >= 60 ? 'Warning! Below 75%' : 'Critical! Needs Improvement');
         
         const card = document.createElement('div');
         card.className = 'glass-effect';
@@ -579,25 +503,12 @@ function renderSubjectCards(subjects) {
     });
 }
 
-// Filter subject attendance
 async function filterSubjectAttendance() {
     const subjectId = document.getElementById('subjectFilter')?.value || 'all';
-    const semester = document.getElementById('semesterFilter')?.value || 'all';
-    
     let filteredData = [...currentSubjectData];
-    
-    if (semester !== 'all') {
-        // Note: You'll need to add semester field to subjects for this to work
-        // filteredData = filteredData.filter(s => s.semester == semester);
-    }
-    
     renderSubjectChart(filteredData);
     renderSubjectCards(filteredData);
 }
-
-// Update showSection to include subjectAnalytics
-// Add this case in your existing showSection function:
-// if (section === 'subjectAnalytics') loadSubjectAnalytics();
 
 // Filter history by month
 async function filterHistory() {
@@ -642,12 +553,11 @@ async function filterHistory() {
     }
 }
 
-// Scan QR Code
+// ============ QR SCANNER FUNCTIONS ============
 async function scanQR() {
     document.getElementById('qrScannerModal').style.display = 'block';
 }
 
-// Start QR scanner
 async function startQRScanner() {
     try {
         const video = document.getElementById('qrVideo');
@@ -660,7 +570,6 @@ async function startQRScanner() {
     }
 }
 
-// Scan QR code
 function scanQRCode() {
     const video = document.getElementById('qrVideo');
     const canvas = document.getElementById('qrCanvas');
@@ -684,7 +593,6 @@ function scanQRCode() {
     }, 500);
 }
 
-// Process QR code data - Using API
 async function processQRCode(qrData) {
     try {
         const data = JSON.parse(qrData);
@@ -724,7 +632,15 @@ async function processQRCode(qrData) {
     }
 }
 
-// Open confirm modal
+function closeQRScanner() {
+    const video = document.getElementById('qrVideo');
+    if (video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+    }
+    document.getElementById('qrScannerModal').style.display = 'none';
+}
+
+// ============ CONFIRM ATTENDANCE FUNCTIONS ============
 async function openConfirmModal() {
     document.getElementById('confirmModal').style.display = 'block';
     
@@ -743,22 +659,11 @@ async function openConfirmModal() {
     }
 }
 
-// Calculate distance from classroom
-async function calculateDistanceFromClassroom(studentLoc) {
-    const classroomLocation = {
-        latitude: 29.171743,
-        longitude: 75.735818
-    };
-    
-    return calculateDistance(
-        studentLoc.latitude,
-        studentLoc.longitude,
-        classroomLocation.latitude,
-        classroomLocation.longitude
-    );
+function closeConfirmModal() {
+    document.getElementById('confirmModal').style.display = 'none';
+    window.currentLocation = null;
 }
 
-// Confirm attendance (without selfie)
 async function confirmAttendance() {
     console.log('📝 Confirm Attendance button clicked!');
     
@@ -818,14 +723,8 @@ async function confirmAttendance() {
     }
 }
 
-// Close confirm modal
-function closeConfirmModal() {
-    document.getElementById('confirmModal').style.display = 'none';
-    window.currentLocation = null;
-}
-
-// Get current location
-function getCurrentLocation() {
+// ============ HELPER FUNCTIONS ============
+async function getCurrentLocation() {
     return new Promise((resolve, reject) => {
         if (!navigator.geolocation) {
             reject(new Error('Geolocation not supported'));
@@ -839,7 +738,20 @@ function getCurrentLocation() {
     });
 }
 
-// Calculate distance between two coordinates
+async function calculateDistanceFromClassroom(studentLoc) {
+    const classroomLocation = {
+        latitude: 29.171743,
+        longitude: 75.735818
+    };
+    
+    return calculateDistance(
+        studentLoc.latitude,
+        studentLoc.longitude,
+        classroomLocation.latitude,
+        classroomLocation.longitude
+    );
+}
+
 function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371e3;
     const φ1 = lat1 * Math.PI / 180;
@@ -855,16 +767,6 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     return R * c;
 }
 
-// Close QR scanner
-function closeQRScanner() {
-    const video = document.getElementById('qrVideo');
-    if (video.srcObject) {
-        video.srcObject.getTracks().forEach(track => track.stop());
-    }
-    document.getElementById('qrScannerModal').style.display = 'none';
-}
-
-// Get Device ID
 async function getDeviceId() {
     const fingerprint = [
         navigator.userAgent,
@@ -884,12 +786,6 @@ async function getDeviceId() {
     return hashHex;
 }
 
-// Update photo
-async function updatePhoto() {
-    showToast('Photo update coming soon', 'info');
-}
-
-// Change password
 async function changePassword() {
     const newPassword = prompt('Enter new password (minimum 6 characters):');
     if (newPassword && newPassword.length >= 6) {
@@ -914,14 +810,12 @@ async function changePassword() {
     }
 }
 
-// Toggle dark mode
 function toggleDarkMode() {
     document.body.classList.toggle('dark-mode');
     const isDark = document.body.classList.contains('dark-mode');
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
 }
 
-// Loading functions
 function showLoading() {
     let loader = document.getElementById('studentLoader');
     if (!loader) {
@@ -938,14 +832,18 @@ function hideLoading() {
     if (loader) loader.remove();
 }
 
-// EXPORT FUNCTIONS TO WINDOW
+// ============ EXPORT FUNCTIONS TO WINDOW ============
 window.showSection = showSection;
 window.scanQR = scanQR;
 window.startQRScanner = startQRScanner;
 window.closeQRScanner = closeQRScanner;
 window.filterHistory = filterHistory;
-window.updatePhoto = updatePhoto;
 window.changePassword = changePassword;
 window.toggleDarkMode = toggleDarkMode;
 window.closeConfirmModal = closeConfirmModal;
 window.confirmAttendance = confirmAttendance;
+window.openPhotoUpload = openPhotoUpload;
+window.closePhotoModal = closePhotoModal;
+window.uploadProfilePhoto = uploadProfilePhoto;
+window.removeProfilePhoto = removeProfilePhoto;
+window.filterSubjectAttendance = filterSubjectAttendance;
