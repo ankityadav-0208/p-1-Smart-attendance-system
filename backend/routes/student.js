@@ -331,7 +331,8 @@ router.get('/stats', async (req, res) => {
 // @route   GET /api/student/subject-attendance
 router.get('/subject-attendance', async (req, res) => {
     try {
-        // Get all subjects
+        // Get all subjects (you can filter by semester/department later)
+        const Subject = require('../models/Subject');
         const subjects = await Subject.find();
         
         const subjectAttendance = [];
@@ -361,6 +362,7 @@ router.get('/subject-attendance', async (req, res) => {
                 subjectName: subject.name,
                 subjectCode: subject.code,
                 department: subject.department,
+                semester: subject.semester,
                 attended,
                 total: totalSessions,
                 percentage
@@ -373,10 +375,10 @@ router.get('/subject-attendance', async (req, res) => {
         });
         
     } catch (error) {
-        console.error(error);
+        console.error('Error in subject-attendance:', error);
         res.status(500).json({
             success: false,
-            message: 'Server error'
+            message: error.message || 'Server error'
         });
     }
 });
