@@ -6,6 +6,32 @@ const path = require('path');            // ✅ Required for file paths
 const User = require('../models/User');
 const { protect, authorize } = require('../middleware/auth');
 
+// Configure multer for profile photos
+const profileStorage = multer.diskStorage({
+    destination: function(req, file, cb) {
+        const dir = `uploads/profiles/${req.user.id}`;
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        cb(null, dir);
+    },
+    filename: function(req, file, cb) {
+        const ext = path.extname(file.originalname);
+        cb(null, `profile_${Date.now()}${ext}`);
+    }
+});
+
+const profileUpload = multer({
+    storage: profileStorage,
+    limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Not an image!'), false);
+        }
+    }
+});
 
 // @desc    Get all users (admin only)
 // @route   GET /api/users
@@ -111,34 +137,6 @@ router.put('/profile', protect, async (req, res) => {
     }
 });
 
-
-// Configure multer for profile photos
-const profileStorage = multer.diskStorage({
-    destination: function(req, file, cb) {
-        const dir = `uploads/profiles/${req.user.id}`;
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
-        cb(null, dir);
-    },
-    filename: function(req, file, cb) {
-        const ext = path.extname(file.originalname);
-        cb(null, `profile_${Date.now()}${ext}`);
-    }
-});
-
-const profileUpload = multer({
-    storage: profileStorage,
-    limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit
-    fileFilter: (req, file, cb) => {
-        if (file.mimetype.startsWith('image/')) {
-            cb(null, true);
-        } else {
-            cb(new Error('Not an image!'), false);
-        }
-    }
-});
-
 // @desc    Update profile photo
 // @route   POST /api/users/profile-photo
 router.post('/profile-photo', protect, profileUpload.single('profilePhoto'), async (req, res) => {
@@ -150,7 +148,7 @@ router.post('/profile-photo', protect, profileUpload.single('profilePhoto'), asy
             });
         }
         
-        // Force HTTPS for production
+        // Force HTTPS for production, use HTTP for local development
         const protocol = process.env.NODE_ENV === 'production' ? 'https' : req.protocol;
         const profilePhotoURL = `${protocol}://${req.get('host')}/uploads/profiles/${req.user.id}/${req.file.filename}`;
         
@@ -199,7 +197,6 @@ router.delete('/profile-photo', protect, async (req, res) => {
     }
 });
 
-
 // @desc    Update password
 // @route   PUT /api/users/change-password
 router.put('/change-password', protect, async (req, res) => {
@@ -225,27 +222,6 @@ router.put('/change-password', protect, async (req, res) => {
         res.json({
             success: true,
             message: 'Password updated successfully'
-        });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error'
-        });
-    }
-});
-
-// @desc    Update profile photo
-// @route   POST /api/users/profile-photo
-// Note: This requires multer setup - you'll need to add multer configuration
-router.post('/profile-photo', protect, async (req, res) => {
-    try {
-        // This endpoint would handle profile photo upload
-        // You'll need to integrate multer similar to the selfie upload in student.js
-        
-        res.json({
-            success: true,
-            message: 'Profile photo updated successfully'
         });
     } catch (error) {
         console.error(error);

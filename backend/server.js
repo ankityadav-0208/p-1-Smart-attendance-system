@@ -36,6 +36,16 @@ app.use(cors({
     exposedHeaders: ['Content-Disposition']
 }));
 
+// Serve static files from uploads directory (add this after CORS setup)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Add a specific header for images
+app.use('/uploads', (req, res, next) => {
+    res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.header('Access-Control-Allow-Origin', '*');
+    next();
+});
+
 // Rate limiting
 const limiter = rateLimit({
     windowMs: 10 * 60 * 1000, // 10 minutes

@@ -44,7 +44,7 @@ async function loadStudentData() {
         return;
     }
 
-    // Update sidebar - with null checks
+    // Update sidebar
     const studentNameElem = document.getElementById('studentName');
     if (studentNameElem) studentNameElem.textContent = user.name;
     
@@ -60,29 +60,50 @@ async function loadStudentData() {
         if (profilePhotoElem) profilePhotoElem.src = user.profilePhotoURL;
     }
 
-    // Update profile details - with null checks for all elements
+    // Update profile details - USING CORRECT ELEMENT IDs
     const profileNameElem = document.getElementById('profileName');
     if (profileNameElem) profileNameElem.textContent = user.name;
     
+    // Roll number - your HTML has id="profileRoll"
     const profileRollElem = document.getElementById('profileRoll');
     if (profileRollElem) profileRollElem.textContent = user.rollNumber || 'N/A';
     
-    // THIS IS LINE 58 - FIXED with null check
-    const profileSectionElem = document.getElementById('profileSection');
+    // Section - your HTML has id="profileSectionText"
+    const profileSectionElem = document.getElementById('profileSectionText');
     if (profileSectionElem) profileSectionElem.textContent = user.section || 'N/A';
     
-    // Also try the alternative ID if needed
-    const profileSectionTextElem = document.getElementById('profileSectionText');
-    if (profileSectionTextElem) profileSectionTextElem.textContent = user.section || 'N/A';
-    
+    // Email - your HTML has id="profileEmail"
     const profileEmailElem = document.getElementById('profileEmail');
     if (profileEmailElem) profileEmailElem.textContent = user.email;
     
+    // Device ID - your HTML has id="profileDeviceId"
     const profileDeviceIdElem = document.getElementById('profileDeviceId');
     if (profileDeviceIdElem) profileDeviceIdElem.textContent = user.deviceId ? user.deviceId.substring(0, 16) + '...' : 'N/A';
     
+    // Member Since - your HTML has id="profileJoined"
     const profileJoinedElem = document.getElementById('profileJoined');
     if (profileJoinedElem && user.createdAt) profileJoinedElem.textContent = new Date(user.createdAt).toLocaleDateString();
+    
+    // Load attendance summary for profile
+    try {
+        const statsResponse = await apiRequest('/student/stats');
+        const stats = statsResponse.data;
+        
+        const profileAttendance = document.getElementById('profileAttendance');
+        if (profileAttendance) profileAttendance.textContent = (stats.percentage || 0) + '%';
+        
+        const profileAttended = document.getElementById('profileAttended');
+        if (profileAttended) profileAttended.textContent = stats.attended || 0;
+        
+        const profileTotal = document.getElementById('profileTotal');
+        if (profileTotal) profileTotal.textContent = stats.total || 0;
+        
+        const profileRollBadge = document.getElementById('profileRollBadge');
+        if (profileRollBadge) profileRollBadge.textContent = `Roll: ${user.rollNumber || 'N/A'} | Section: ${user.section || 'N/A'}`;
+        
+    } catch (error) {
+        console.error('Error loading profile stats:', error);
+    }
 }
 
 // Show different sections - UPDATED
