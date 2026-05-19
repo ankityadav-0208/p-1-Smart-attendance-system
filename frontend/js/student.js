@@ -230,6 +230,159 @@ async function loadAttendanceHistory() {
     }
 }
 
+// Photo upload functions
+async function openPhotoUpload() {
+    document.getElementById('photoModal').style.display = 'block';
+    document.getElementById('photoPreview').src = '';
+    document.getElementById('photoInput').value = '';
+}
+
+function closePhotoModal() {
+    document.getElementById('photoModal').style.display = 'none';
+}
+
+async function uploadProfilePhoto() {
+    const fileInput = document.getElementById('photoInput');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        showToast('Please select a photo first', 'warning');
+        return;
+    }
+    
+    // Check file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+        showToast('Photo size should be less than 2MB', 'error');
+        return;
+    }
+    
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+        showToast('Please select an image file', 'error');
+        return;
+    }
+    
+    try {
+        showLoading();
+        
+        const formData = new FormData();
+        formData.append('profilePhoto', file);
+        
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API.baseURL}/users/profile-photo`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.message || 'Upload failed');
+        }
+        
+        // Update local user data
+        const user = JSON.parse(sessionStorage.getItem('currentUser'));
+        user.profilePhotoURL = result.data.profilePhotoURL;
+        sessionStorage.setItem('currentUser', JSON.stringify(user));
+        
+        // Update UI
+        const profileImage = document.getElementById('profileImage');
+        if (profileImage) profileImage.src = result.data.profilePhotoURL;
+        
+        const profilePhoto = document.getElementById('profilePhoto');
+        if (profilePhoto) profilePhoto.src = result.data.profilePhotoURL;
+        
+        showToast('Profile photo updated successfully!', 'success');
+        closePhotoModal();
+        
+    } catch (error) {
+        console.error('Upload error:', error);
+        showToast(error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function removeProfilePhoto() {
+    if (!confirm('Are you sure you want to remove your profile photo?')) return;
+    
+    try {
+        showLoading();
+        
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API.baseURL}/users/profile-photo`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.message || 'Failed to remove photo');
+        }
+        
+        // Update local user data
+        const user = JSON.parse(sessionStorage.getItem('currentUser'));
+        user.profilePhotoURL = '';
+        sessionStorage.setItem('currentUser', JSON.stringify(user));
+        
+        // Update UI
+        const profileImage = document.getElementById('profileImage');
+        if (profileImage) profileImage.src = '';
+        
+        const profilePhoto = document.getElementById('profilePhoto');
+        if (profilePhoto) profilePhoto.src = '';
+        
+        showToast('Profile photo removed', 'success');
+        closePhotoModal();
+        
+    } catch (error) {
+        console.error('Remove error:', error);
+        showToast(error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Update loadStudentData to include attendance summary
+// Add this to your existing loadStudentData function:
+async function loadStudentData() {
+    const user = JSON.parse(sessionStorage.getItem('currentUser'));
+    if (!user) {
+        window.location.href = 'index.html';
+        return;
+    }
+
+    // ... existing code ...
+    
+    // Load attendance summary for profile
+    try {
+        const statsResponse = await apiRequest('/student/stats');
+        const stats = statsResponse.data;
+        
+        const profileAttendance = document.getElementById('profileAttendance');
+        if (profileAttendance) profileAttendance.textContent = (stats.percentage || 0) + '%';
+        
+        const profileAttended = document.getElementById('profileAttended');
+        if (profileAttended) profileAttended.textContent = stats.attended || 0;
+        
+        const profileTotal = document.getElementById('profileTotal');
+        if (profileTotal) profileTotal.textContent = stats.total || 0;
+        
+        const profileRollBadge = document.getElementById('profileRollBadge');
+        if (profileRollBadge) profileRollBadge.textContent = `Roll: ${user.rollNumber || 'N/A'} | Section: ${user.section || 'N/A'}`;
+        
+    } catch (error) {
+        console.error('Error loading profile stats:', error);
+    }
+}
+
+
 // Subject Analytics Variables
 let subjectChart = null;
 let currentSubjectData = [];

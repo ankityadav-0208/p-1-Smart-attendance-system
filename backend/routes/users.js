@@ -107,6 +107,93 @@ router.put('/profile', protect, async (req, res) => {
     }
 });
 
+
+// Configure multer for profile photos
+const profileStorage = multer.diskStorage({
+    destination: function(req, file, cb) {
+        const dir = `uploads/profiles/${req.user.id}`;
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        cb(null, dir);
+    },
+    filename: function(req, file, cb) {
+        const ext = path.extname(file.originalname);
+        cb(null, `profile_${Date.now()}${ext}`);
+    }
+});
+
+const profileUpload = multer({
+    storage: profileStorage,
+    limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Not an image!'), false);
+        }
+    }
+});
+
+// @desc    Update profile photo
+// @route   POST /api/users/profile-photo
+router.post('/profile-photo', protect, profileUpload.single('profilePhoto'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'No file uploaded'
+            });
+        }
+        
+        const profilePhotoURL = `${req.protocol}://${req.get('host')}/uploads/profiles/${req.user.id}/${req.file.filename}`;
+        
+        const user = await User.findByIdAndUpdate(
+            req.user.id,
+            { profilePhoto: profilePhotoURL },
+            { new: true }
+        ).select('-password');
+        
+        res.json({
+            success: true,
+            message: 'Profile photo updated successfully',
+            data: { profilePhotoURL }
+        });
+        
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+});
+
+// @desc    Remove profile photo
+// @route   DELETE /api/users/profile-photo
+router.delete('/profile-photo', protect, async (req, res) => {
+    try {
+        const user = await User.findByIdAndUpdate(
+            req.user.id,
+            { profilePhoto: '' },
+            { new: true }
+        ).select('-password');
+        
+        res.json({
+            success: true,
+            message: 'Profile photo removed successfully'
+        });
+        
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+});
+
+
 // @desc    Update password
 // @route   PUT /api/users/change-password
 router.put('/change-password', protect, async (req, res) => {

@@ -199,36 +199,63 @@
             <div id="profileSection" class="section">
                 <div class="profile-card glass-effect">
                     <div class="profile-header">
-                        <img src="" alt="Profile" id="profilePhoto" class="profile-large">
+                        <div class="profile-photo-container">
+                            <img src="" alt="Profile" id="profilePhoto" class="profile-large">
+                            <button class="photo-edit-btn" onclick="openPhotoUpload()">
+                                <i class="fas fa-camera"></i>
+                            </button>
+                        </div>
                         <h2 id="profileName"></h2>
-                        <p id="profileRoleStudent">Student</p>
+                        <p class="profile-role">Student</p>
+                        <p class="profile-badge" id="profileRollBadge"></p>
                     </div>
                     
                     <div class="profile-details">
-                        <div class="detail-row">
-                            <label>Roll Number:</label>
-                            <span id="profileRoll"></span>
+                        <div class="detail-group">
+                            <h4><i class="fas fa-user-circle"></i> Personal Information</h4>
+                            <div class="detail-row">
+                                <label><i class="fas fa-id-card"></i> Roll Number:</label>
+                                <span id="profileRoll"></span>
+                            </div>
+                            <div class="detail-row">
+                                <label><i class="fas fa-layer-group"></i> Section:</label>
+                                <span id="profileSectionText"></span>
+                            </div>
+                            <div class="detail-row">
+                                <label><i class="fas fa-envelope"></i> Email:</label>
+                                <span id="profileEmail"></span>
+                            </div>
+                            <div class="detail-row">
+                                <label><i class="fas fa-mobile-alt"></i> Device ID:</label>
+                                <span id="profileDeviceId"></span>
+                            </div>
+                            <div class="detail-row">
+                                <label><i class="fas fa-calendar-alt"></i> Member Since:</label>
+                                <span id="profileJoined"></span>
+                            </div>
                         </div>
-                        <div class="detail-row">
-                            <label>Section:</label>
-                            <span id="profileSectionText"></span>
-                        </div>
-                        <div class="detail-row">
-                            <label>Email:</label>
-                            <span id="profileEmail"></span>
-                        </div>
-                        <div class="detail-row">
-                            <label>Device ID:</label>
-                            <span id="profileDeviceId"></span>
-                        </div>
-                        <div class="detail-row">
-                            <label>Member Since:</label>
-                            <span id="profileJoined"></span>
+                        
+                        <div class="detail-group">
+                            <h4><i class="fas fa-chart-line"></i> Attendance Summary</h4>
+                            <div class="summary-stats">
+                                <div class="summary-item">
+                                    <span class="label">Overall Attendance:</span>
+                                    <span class="value" id="profileAttendance">0%</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="label">Classes Attended:</span>
+                                    <span class="value" id="profileAttended">0</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="label">Total Classes:</span>
+                                    <span class="value" id="profileTotal">0</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
                     <div class="profile-actions">
-                        <button class="btn btn-primary" onclick="updatePhoto()">
+                        <button class="btn btn-primary" onclick="openPhotoUpload()">
                             <i class="fas fa-camera"></i> Update Photo
                         </button>
                         <button class="btn btn-outline" onclick="changePassword()">
@@ -237,8 +264,29 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
+
+            <!-- Photo Upload Modal -->
+            <div id="photoModal" class="modal">
+                <div class="modal-content glass-effect">
+                    <span class="close" onclick="closePhotoModal()">&times;</span>
+                    <h3>Update Profile Photo</h3>
+                    <div class="photo-upload-container">
+                        <img id="photoPreview" class="photo-preview" src="" alt="Preview">
+                        <input type="file" id="photoInput" accept="image/*" style="display: none;">
+                        <div class="photo-upload-buttons">
+                            <button class="btn btn-outline" onclick="document.getElementById('photoInput').click()">
+                                <i class="fas fa-folder-open"></i> Choose File
+                            </button>
+                            <button class="btn btn-primary" onclick="uploadProfilePhoto()">
+                                <i class="fas fa-upload"></i> Upload
+                            </button>
+                            <button class="btn btn-danger" onclick="removeProfilePhoto()">
+                                <i class="fas fa-trash"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
     <!-- QR Scanner Modal -->
     <div id="qrScannerModal" class="modal">

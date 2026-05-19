@@ -1409,3 +1409,188 @@ body.dark-mode tr:hover {
 .subject-card-critical {
     border-left-color: #dc3545;
 }
+/* Enhanced Profile Styles */
+.profile-photo-container {
+    position: relative;
+    display: inline-block;
+}
+
+.profile-large {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid #4a90e2;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.photo-edit-btn {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    background: #4a90e2;
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.photo-edit-btn:hover {
+    background: #1e3c72;
+    transform: scale(1.1);
+}
+
+.profile-role {
+    color: #666;
+    margin: 5px 0;
+}
+
+.profile-badge {
+    display: inline-block;
+    background: #e3f2fd;
+    color: #1e3c72;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 12px;
+    margin-top: 10px;
+}
+
+.profile-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.detail-group h4 {
+    color: #1e3c72;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e1e1e1;
+}
+
+.detail-group h4 i {
+    margin-right: 8px;
+    color: #4a90e2;
+}
+
+.detail-row {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-row label {
+    width: 100px;
+    font-weight: 600;
+    color: #555;
+    font-size: 13px;
+}
+
+.detail-row label i {
+    width: 20px;
+    margin-right: 8px;
+    color: #4a90e2;
+}
+
+.detail-row span {
+    flex: 1;
+    color: #333;
+    font-size: 13px;
+}
+
+.summary-stats {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 15px;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #e1e1e1;
+}
+
+.summary-item:last-child {
+    border-bottom: none;
+}
+
+.summary-item .label {
+    font-weight: 600;
+    color: #555;
+}
+
+.summary-item .value {
+    font-weight: 700;
+    color: #1e3c72;
+}
+
+.profile-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    padding-top: 20px;
+    border-top: 1px solid #e1e1e1;
+}
+
+/* Photo Modal */
+.photo-upload-container {
+    text-align: center;
+    padding: 20px;
+}
+
+.photo-preview {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 20px;
+    border: 3px solid #4a90e2;
+}
+
+.photo-upload-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* Dark mode support for profile */
+body.dark-mode .detail-row {
+    border-bottom-color: #404050;
+}
+
+body.dark-mode .detail-row label {
+    color: #b0b0c0;
+}
+
+body.dark-mode .detail-row span {
+    color: #e0e0e0;
+}
+
+body.dark-mode .summary-stats {
+    background: #3d3d4d;
+}
+
+body.dark-mode .summary-item .label {
+    color: #b0b0c0;
+}
+
+body.dark-mode .summary-item .value {
+    color: #e0e0e0;
+}
+
+body.dark-mode .detail-group h4 {
+    color: #e0e0e0;
+    border-bottom-color: #404050;
+}
+
+body.dark-mode .profile-badge {
+    background: #3d3d4d;
+    color: #4a90e2;
+}
