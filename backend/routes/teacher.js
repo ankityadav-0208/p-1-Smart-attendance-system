@@ -15,14 +15,15 @@ router.use(authorize('teacher', 'admin'));
 // @route   POST /api/teacher/start-session
 router.post('/start-session', async (req, res) => {
     try {
-        const { classroomLocation, allowedRadius } = req.body;
+        const { classroomLocation, allowedRadius, subjectId } = req.body;
 
         const session = await AttendanceSession.create({
             createdBy: req.user.id,
             sessionToken: uuidv4(),
             classroomLocation,
             allowedRadius: allowedRadius || 1000,
-            expiresAt: new Date(Date.now() + 5 * 60000) // 5 minutes
+            expiresAt: new Date(Date.now() + 5 * 60000), // 5 minutes
+            subjectId: subjectId || null
         });
 
         res.json({
@@ -151,13 +152,57 @@ router.get('/students', async (req, res) => {
             .select('name rollNumber section email profilePhoto')
             .sort('rollNumber');
 
+        // Fetch sessions created by this teacher (or all if admin)
+        let sessionQuery = {};
+        if (req.user.role !== 'admin') {
+            sessionQuery.createdBy = req.user.id;
+        }
+        const sessions = await AttendanceSession.find(sessionQuery);
+        const sessionIds = sessions.map(s => s._id);
+        const totalSessionsCount = sessionIds.length;
+
+        // Fetch records matching those sessions
+        const records = await AttendanceRecord.find({ sessionId: { $in: sessionIds } });
+
+        // Map records by studentId to compute unique sessions attended and last attendance date
+        const studentRecordsMap = {};
+        records.forEach(r => {
+            if (!r.studentId) return;
+            const sId = r.studentId.toString();
+            if (!studentRecordsMap[sId]) {
+                studentRecordsMap[sId] = {
+                    sessions: new Set(),
+                    lastTimestamp: null
+                };
+            }
+            studentRecordsMap[sId].sessions.add(r.sessionId.toString());
+            if (!studentRecordsMap[sId].lastTimestamp || r.timestamp > studentRecordsMap[sId].lastTimestamp) {
+                studentRecordsMap[sId].lastTimestamp = r.timestamp;
+            }
+        });
+
+        // Attach statistics to each student object
+        const studentData = students.map(student => {
+            const stats = studentRecordsMap[student._id.toString()] || { sessions: new Set(), lastTimestamp: null };
+            let percentage = 0;
+            if (totalSessionsCount > 0) {
+                percentage = (stats.sessions.size / totalSessionsCount) * 100;
+            }
+
+            return {
+                ...student.toObject(),
+                attendancePercentage: parseFloat(percentage.toFixed(1)),
+                lastAttendanceDate: stats.lastTimestamp ? stats.lastTimestamp.toISOString() : 'Never'
+            };
+        });
+
         res.json({
             success: true,
-            data: students
+            data: studentData
         });
 
     } catch (error) {
-        console.error(error);
+        console.error('Error fetching students with stats:', error);
         res.status(500).json({
             success: false,
             message: 'Server error'
@@ -221,59 +266,6 @@ router.get('/report', async (req, res) => {
         });
     }
 });
-
-// @desc    Get all subjects for teacher
-// @route   GET /api/teacher/subjects
-router.get('/subjects', async (req, res) => {
-    try {
-        let query = {};
-        if (req.user.role !== 'admin') {
-            query.teacherId = req.user.id;
-        }
-        const subjects = await Subject.find(query).sort('name');
-        res.json({ success: true, data: subjects });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, message: 'Server error' });
-    }
-});
-
-// @desc    Start attendance session
-// @route   POST /api/teacher/start-session
-router.post('/start-session', async (req, res) => {
-    try {
-        const { classroomLocation, allowedRadius, subjectId } = req.body;
-
-        const session = await AttendanceSession.create({
-            createdBy: req.user.id,
-            sessionToken: uuidv4(),
-            classroomLocation,
-            allowedRadius: allowedRadius || 1000,
-            expiresAt: new Date(Date.now() + 5 * 60000),
-            subjectId: subjectId || null  // ✅ NEW
-        });
-
-        res.json({
-            success: true,
-            data: {
-                sessionId: session._id,
-                sessionToken: session.sessionToken,
-                expiresAt: session.expiresAt
-            }
-        });
-
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error'
-        });
-    }
-});
-
-// ... rest of the routes remain the same
-// (stop-session, active-sessions, attendance-records, students, report)
-
 
 // @desc    Get all subjects for teacher
 // @route   GET /api/teacher/subjects

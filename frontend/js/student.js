@@ -240,7 +240,7 @@ async function loadAttendanceHistory() {
                 <td>${date.toLocaleTimeString()}</td>
                 <td>${sessionId?.substring(0, 12) || 'N/A'}...</td>
                 <td>${record.location?.distance ? '✓ Verified' : 'N/A'}</td>
-                <td>N/A
+                <td>N/A</td>
             `;
             tbody.appendChild(row);
         });
@@ -544,7 +544,7 @@ async function filterHistory() {
                 <td>${date.toLocaleTimeString()}</td>
                 <td>${sessionId?.substring(0, 12) || 'N/A'}...</td>
                 <td>${record.location?.distance ? '✓ Verified' : 'N/A'}</td>
-                <td>N/A
+                <td>N/A</td>
             `;
             tbody.appendChild(row);
         });

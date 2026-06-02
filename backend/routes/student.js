@@ -189,7 +189,7 @@ router.post('/mark-attendance', upload.single('selfie'), async (req, res) => {
         }
 
         // Calculate distance from classroom
-        const studentLoc = JSON.parse(location);
+        const studentLoc = typeof location === 'string' ? JSON.parse(location) : location;
         const distance = calculateDistance(
             studentLoc.latitude,
             studentLoc.longitude,

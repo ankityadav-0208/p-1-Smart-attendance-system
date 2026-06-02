@@ -113,7 +113,7 @@ async function loadDashboardStats() {
         document.getElementById('pendingApprovals').textContent = stats.pending || 0;
         document.getElementById('pendingCount').textContent = stats.pending || 0;
         setTimeout(() => {
-            loadAdminChart();
+            loadAdminChart(stats);
         }, 200);
         
     } catch (error) {
@@ -123,7 +123,7 @@ async function loadDashboardStats() {
 }
 
 // Load admin chart
-function loadAdminChart() {
+function loadAdminChart(stats) {
     console.log('Loading admin chart...');
     
     const canvas = document.getElementById('adminChart');
@@ -138,10 +138,10 @@ function loadAdminChart() {
         return;
     }
     
-    const teachers = parseInt(document.getElementById('totalTeachers')?.textContent) || 0;
-    const students = parseInt(document.getElementById('totalStudents')?.textContent) || 0;
-    const pending = parseInt(document.getElementById('pendingApprovals')?.textContent) || 0;
-    const sessions = parseInt(document.getElementById('totalSessions')?.textContent) || 0;
+    const teachers = stats ? (stats.teachers || 0) : (parseInt(document.getElementById('totalTeachers')?.textContent) || 0);
+    const students = stats ? (stats.students || 0) : (parseInt(document.getElementById('totalStudents')?.textContent) || 0);
+    const pending = stats ? (stats.pending || 0) : (parseInt(document.getElementById('pendingApprovals')?.textContent) || 0);
+    const sessions = stats ? (stats.sessions || 0) : (parseInt(document.getElementById('totalSessions')?.textContent) || 0);
     
     console.log('Chart data:', { teachers, students, pending, sessions });
     

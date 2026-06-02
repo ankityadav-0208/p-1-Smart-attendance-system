@@ -631,43 +631,13 @@ async function loadStudents() {
         const tbody = document.getElementById('studentsTableBody');
         if (!tbody) return;
 
-        // Get total number of UNIQUE sessions
-        const allRecordsResponse = await apiRequest('/teacher/attendance-records');
-        const allRecords = allRecordsResponse.data || [];
-        
-        // Count unique session IDs
-        const uniqueSessionIds = new Set();
-        allRecords.forEach(record => {
-            const sessionId = record.sessionId?._id || record.sessionId;
-            if (sessionId) uniqueSessionIds.add(sessionId.toString());
-        });
-        const totalSessionsCount = uniqueSessionIds.size;
-        
-        console.log('Total unique sessions:', totalSessionsCount);
-
         tbody.innerHTML = '';
 
         for (const student of students) {
-            // Get attendance records for this student
-            const attendanceResponse = await apiRequest(`/teacher/attendance-records?studentId=${student._id}`);
-            const attendanceRecords = attendanceResponse.data || [];
-            
-            // Calculate percentage based on unique sessions attended
-            let percentage = 0;
-            if (totalSessionsCount > 0) {
-                percentage = (attendanceRecords.length / totalSessionsCount) * 100;
-            }
-            const percentageFormatted = percentage.toFixed(1);
-
-            // Get last attendance date (only once)
-            let lastAttendanceDate = 'Never';
-            if (attendanceRecords.length > 0) {
-                const sortedRecords = [...attendanceRecords].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                const lastRecord = sortedRecords[0];
-                if (lastRecord && lastRecord.timestamp) {
-                    lastAttendanceDate = new Date(lastRecord.timestamp).toLocaleDateString();
-                }
-            }
+            const percentageFormatted = (student.attendancePercentage ?? 0).toFixed(1);
+            const lastAttendanceDate = student.lastAttendanceDate === 'Never' || !student.lastAttendanceDate
+                ? 'Never'
+                : new Date(student.lastAttendanceDate).toLocaleDateString();
 
             const row = document.createElement('tr');
             row.innerHTML = `
@@ -675,7 +645,7 @@ async function loadStudents() {
                 <td>${student.name}</td>
                 <td>${student.section || 'N/A'}</td>
                 <td>${percentageFormatted}%</td>
-                <td>${lastAttendanceDate}
+                <td>${lastAttendanceDate}</td>
             `;
             tbody.appendChild(row);
         }
@@ -721,17 +691,6 @@ async function filterStudents() {
     const search = document.getElementById('searchStudent').value.toLowerCase();
 
     try {
-        // Get unique sessions count
-        const allRecordsResponse = await apiRequest('/teacher/attendance-records');
-        const allRecords = allRecordsResponse.data || [];
-        
-        const uniqueSessionIds = new Set();
-        allRecords.forEach(record => {
-            const sessionId = record.sessionId?._id || record.sessionId;
-            if (sessionId) uniqueSessionIds.add(sessionId.toString());
-        });
-        const totalSessionsCount = uniqueSessionIds.size;
-
         const response = await apiRequest('/teacher/students');
         let students = response.data || [];
         
@@ -756,23 +715,10 @@ async function filterStudents() {
         tbody.innerHTML = '';
 
         for (const student of students) {
-            const attendanceResponse = await apiRequest(`/teacher/attendance-records?studentId=${student._id}`);
-            const attendanceRecords = attendanceResponse.data || [];
-            
-            let percentage = 0;
-            if (totalSessionsCount > 0) {
-                percentage = (attendanceRecords.length / totalSessionsCount) * 100;
-            }
-            const percentageFormatted = percentage.toFixed(1);
-
-            let lastAttendanceDate = 'Never';
-            if (attendanceRecords.length > 0) {
-                const sortedRecords = [...attendanceRecords].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                const lastRecord = sortedRecords[0];
-                if (lastRecord && lastRecord.timestamp) {
-                    lastAttendanceDate = new Date(lastRecord.timestamp).toLocaleDateString();
-                }
-            }
+            const percentageFormatted = (student.attendancePercentage ?? 0).toFixed(1);
+            const lastAttendanceDate = student.lastAttendanceDate === 'Never' || !student.lastAttendanceDate
+                ? 'Never'
+                : new Date(student.lastAttendanceDate).toLocaleDateString();
 
             const row = document.createElement('tr');
             row.innerHTML = `
@@ -780,7 +726,7 @@ async function filterStudents() {
                 <td>${student.name}</td>
                 <td>${student.section || 'N/A'}</td>
                 <td>${percentageFormatted}%</td>
-                <td>${lastAttendanceDate}
+                <td>${lastAttendanceDate}</td>
             `;
             tbody.appendChild(row);
         }
