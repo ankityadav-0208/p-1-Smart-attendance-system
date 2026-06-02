@@ -137,22 +137,49 @@
             <!-- Attendance Section -->
             <div id="attendanceSection" class="section">
                 <h3>Attendance Records</h3>
+                
+                <!-- Filters -->
+                <div class="filters" style="margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap;">
+                    <input type="date" id="attendanceDateFilter" placeholder="Filter by date" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #ddd;">
+                    <select id="attendanceSubjectFilter" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #ddd;">
+                        <option value="all">All Subjects</option>
+                    </select>
+                    <button class="btn btn-sm btn-outline" onclick="filterAttendanceRecords()">
+                        <i class="fas fa-filter"></i> Apply Filter
+                    </button>
+                    <button class="btn btn-sm btn-outline" onclick="clearAttendanceFilters()">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+                
                 <div class="table-container">
                     <table id="attendanceTable">
                         <thead>
                             <tr>
-                                <th>Date</th>
-                                <th>Student</th>
-                                <th>Roll No</th>
-                                <th>Section</th>
-                                <th>Status</th>
-                                <th>Selfie</th>
+                                <th style="width: 100px;">Date</th>
+                                <th style="width: 80px;">Time</th>
+                                <th style="width: 120px;">Subject</th>
+                                <th style="width: 200px;">Present Students</th>
+                                <th style="width: 200px;">Absent Students</th>
+                                <th style="width: 80px;">Total</th>
+                                <th style="width: 100px;">Attendance %</th>
                             </tr>
                         </thead>
                         <tbody id="attendanceTableBody">
-                            <!-- Filled dynamically -->
+                            <tr><td colspan="7" style="text-align: center;">Loading attendance records...</td></tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- Session Details Modal (for expandable row) -->
+            <div id="sessionDetailsModal" class="modal">
+                <div class="modal-content glass-effect" style="max-width: 600px;">
+                    <span class="close" onclick="closeSessionDetailsModal()">&times;</span>
+                    <h3 id="sessionModalTitle">Session Details</h3>
+                    <div id="sessionModalContent">
+                        <!-- Dynamic content -->
+                    </div>
                 </div>
             </div>
 

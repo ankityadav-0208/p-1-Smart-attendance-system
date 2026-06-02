@@ -1594,3 +1594,84 @@ body.dark-mode .profile-badge {
     background: #3d3d4d;
     color: #4a90e2;
 }
+
+/* Attendance Table Styles */
+.students-cell {
+    max-width: 250px;
+}
+
+.student-badge {
+    display: inline-block;
+    background: #e8f5e9;
+    color: #2e7d32;
+    padding: 4px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    margin: 2px;
+}
+
+.student-badge.present {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.student-badge.absent {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.student-badge.more {
+    background: #e3f2fd;
+    color: #1565c0;
+    cursor: pointer;
+}
+
+.student-badge.empty {
+    background: #f5f5f5;
+    color: #999;
+}
+
+.attendance-good {
+    color: #2e7d32;
+    font-weight: bold;
+}
+
+.attendance-warning {
+    color: #ed6c02;
+    font-weight: bold;
+}
+
+.attendance-critical {
+    color: #d32f2f;
+    font-weight: bold;
+}
+
+.attendance-row {
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.attendance-row:hover {
+    background: #f5f5f5;
+}
+
+/* Session Details Modal */
+.session-detail-group {
+    margin-bottom: 20px;
+}
+
+.session-detail-group h4 {
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #ddd;
+}
+
+.session-detail-group ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.session-detail-group li {
+    padding: 5px 0;
+    border-bottom: 1px solid #f0f0f0;
+}

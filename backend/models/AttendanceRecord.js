@@ -21,11 +21,7 @@ const AttendanceRecordSchema = new mongoose.Schema({
         accuracy: Number,
         distance: Number
     },
-    selfieUrl: {
-        type: String,
-        default: '',
-        required: false
-    },
+    // selfieUrl field REMOVED
     deviceId: {
         type: String,
         required: true
@@ -36,7 +32,6 @@ const AttendanceRecordSchema = new mongoose.Schema({
     userAgent: {
         type: String
     },
-    // ✅ NEW FIELD - Subject for this attendance
     subjectId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Subject'

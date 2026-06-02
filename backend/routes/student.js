@@ -1,36 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 const User = require('../models/User');
 const AttendanceSession = require('../models/AttendanceSession');
 const AttendanceRecord = require('../models/AttendanceRecord');
 const { protect, authorize, getDeviceId } = require('../middleware/auth');
-
-// Configure multer for selfie uploads
-const storage = multer.diskStorage({
-    destination: function(req, file, cb) {
-        const dir = `uploads/selfies/${req.user.id}`;
-        fs.mkdirSync(dir, { recursive: true });
-        cb(null, dir);
-    },
-    filename: function(req, file, cb) {
-        cb(null, `${Date.now()}-${file.originalname}`);
-    }
-});
-
-const upload = multer({ 
-    storage: storage,
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
-    fileFilter: (req, file, cb) => {
-        if (file.mimetype.startsWith('image/')) {
-            cb(null, true);
-        } else {
-            cb(new Error('Not an image! Please upload an image.'), false);
-        }
-    }
-});
 
 // All routes require student role
 router.use(protect);
@@ -96,8 +69,9 @@ router.post('/validate-session', async (req, res) => {
     }
 });
 
-// @desc    Submit attendance without selfie
-router.post('/mark-attendance-without-selfie', async (req, res) => {
+// @desc    Submit attendance (without selfie)
+// @route   POST /api/student/mark-attendance
+router.post('/mark-attendance', async (req, res) => {
     try {
         const { sessionId, location, distance } = req.body;
 
@@ -142,9 +116,8 @@ router.post('/mark-attendance-without-selfie', async (req, res) => {
         const record = await AttendanceRecord.create({
             studentId: req.user.id,
             sessionId: session._id,
-            subjectId: session.subjectId,  // ✅ Inherit subject from session
+            subjectId: session.subjectId,
             location: location ? { ...location, distance } : null,
-            selfieUrl: '',
             deviceId: getDeviceId(req),
             ipAddress: req.ip,
             userAgent: req.get('user-agent')
@@ -157,81 +130,10 @@ router.post('/mark-attendance-without-selfie', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error in mark-attendance-without-selfie:', error);
+        console.error('Error in mark-attendance:', error);
         res.status(500).json({
             success: false,
             message: error.message || 'Server error'
-        });
-    }
-});
-
-// @desc    Submit attendance with selfie
-// @route   POST /api/student/mark-attendance
-router.post('/mark-attendance', upload.single('selfie'), async (req, res) => {
-    try {
-        const { sessionId, location } = JSON.parse(req.body.data || '{}');
-        const selfieFile = req.file;
-
-        if (!selfieFile) {
-            return res.status(400).json({
-                success: false,
-                message: 'Selfie is required'
-            });
-        }
-
-        // Get session
-        const session = await AttendanceSession.findById(sessionId);
-        if (!session || !session.isActive) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid or inactive session'
-            });
-        }
-
-        // Calculate distance from classroom
-        const studentLoc = typeof location === 'string' ? JSON.parse(location) : location;
-        const distance = calculateDistance(
-            studentLoc.latitude,
-            studentLoc.longitude,
-            session.classroomLocation.latitude,
-            session.classroomLocation.longitude
-        );
-
-        if (distance > session.allowedRadius) {
-            return res.status(400).json({
-                success: false,
-                message: `You are ${Math.round(distance)} meters away. Maximum allowed distance is ${session.allowedRadius} meters.`
-            });
-        }
-
-        // Create selfie URL
-        const selfieUrl = `${req.protocol}://${req.get('host')}/uploads/selfies/${req.user.id}/${selfieFile.filename}`;
-
-        // Create attendance record
-        const record = await AttendanceRecord.create({
-            studentId: req.user.id,
-            sessionId: session._id,
-            location: {
-                ...studentLoc,
-                distance
-            },
-            selfieUrl,
-            deviceId: getDeviceId(req),
-            ipAddress: req.ip,
-            userAgent: req.get('user-agent')
-        });
-
-        res.json({
-            success: true,
-            message: 'Attendance marked successfully',
-            data: record
-        });
-
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error'
         });
     }
 });
@@ -257,7 +159,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 router.get('/history', async (req, res) => {
     try {
         const records = await AttendanceRecord.find({ studentId: req.user.id })
-            .populate('sessionId', 'startTime createdBy')
+            .populate('sessionId', 'startTime createdBy subjectId')
             .sort('-timestamp');
 
         res.json({
@@ -326,19 +228,16 @@ router.get('/stats', async (req, res) => {
     }
 });
 
-
 // @desc    Get student's subject-wise attendance
 // @route   GET /api/student/subject-attendance
 router.get('/subject-attendance', async (req, res) => {
     try {
-        // Get all subjects (you can filter by semester/department later)
         const Subject = require('../models/Subject');
         const subjects = await Subject.find();
         
         const subjectAttendance = [];
         
         for (const subject of subjects) {
-            // Get all sessions for this subject
             const sessions = await AttendanceSession.find({
                 subjectId: subject._id,
                 isActive: false
@@ -346,7 +245,6 @@ router.get('/subject-attendance', async (req, res) => {
             
             const totalSessions = sessions.length;
             
-            // Get student's attendance for this subject
             const records = await AttendanceRecord.find({
                 studentId: req.user.id,
                 subjectId: subject._id
@@ -379,64 +277,6 @@ router.get('/subject-attendance', async (req, res) => {
         res.status(500).json({
             success: false,
             message: error.message || 'Server error'
-        });
-    }
-});
-
-// @desc    Get student's weekly subject trend
-// @route   GET /api/student/subject-trend
-router.get('/subject-trend', async (req, res) => {
-    try {
-        const { subjectId, weeks = 8 } = req.query;
-        
-        const records = await AttendanceRecord.find({
-            studentId: req.user.id,
-            subjectId: subjectId
-        }).sort('timestamp');
-        
-        // Group by week
-        const weeklyData = {};
-        const now = new Date();
-        
-        for (let i = weeks; i >= 0; i--) {
-            const weekStart = new Date(now);
-            weekStart.setDate(now.getDate() - (i * 7));
-            const weekKey = weekStart.toISOString().split('T')[0];
-            weeklyData[weekKey] = { attended: 0, total: 0, weekStart };
-        }
-        
-        for (const record of records) {
-            const recordDate = new Date(record.timestamp);
-            for (const weekKey in weeklyData) {
-                const weekStart = weeklyData[weekKey].weekStart;
-                const weekEnd = new Date(weekStart);
-                weekEnd.setDate(weekStart.getDate() + 7);
-                
-                if (recordDate >= weekStart && recordDate < weekEnd) {
-                    weeklyData[weekKey].attended++;
-                    weeklyData[weekKey].total++;
-                    break;
-                }
-            }
-        }
-        
-        const trend = Object.keys(weeklyData).map(week => ({
-            week: week,
-            attendanceRate: weeklyData[week].total > 0 
-                ? (weeklyData[week].attended / weeklyData[week].total * 100).toFixed(1)
-                : 0
-        }));
-        
-        res.json({
-            success: true,
-            data: trend
-        });
-        
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error'
         });
     }
 });

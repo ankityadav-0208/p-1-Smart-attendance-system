@@ -577,38 +577,240 @@ async function stopAttendance() {
     }
 }
 
-// Load attendance records - Using API
+// Load attendance records - Grouped by session (Date-wise)
 async function loadAttendanceRecords() {
     try {
-        const response = await apiRequest('/teacher/attendance-records');
-        const records = response.data || [];
+        showLoading();
+        
+        // Get all attendance records
+        const recordsResponse = await apiRequest('/teacher/attendance-records');
+        const records = recordsResponse.data || [];
 
-        const tbody = document.getElementById('attendanceTableBody');
-        tbody.innerHTML = '';
+        // Get all students
+        const studentsResponse = await apiRequest('/teacher/students');
+        const allStudents = studentsResponse.data || [];
 
-        for (const record of records.slice(0, 50)) {
-            const student = record.studentId || {};
-            const date = new Date(record.timestamp);
-            
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${date.toLocaleString()}</td>
-                <td>${student.name || 'Unknown'}</td>
-                <td>${student.rollNumber || 'N/A'}</td>
-                <td>${student.section || 'N/A'}</td>
-                <td><span class="badge badge-success">Present</span></td>
-                <td>
-                    ${record.selfieUrl ? 
-                        `<button class="btn btn-sm btn-primary" onclick="viewSelfie('${record.selfieUrl}')">View</button>` : 
-                        'No selfie'}
-                </td>
-            `;
-            tbody.appendChild(row);
+        // Get all subjects for filter
+        const subjectsResponse = await apiRequest('/teacher/subjects');
+        const allSubjects = subjectsResponse.data || [];
+        
+        // Populate subject filter dropdown
+        const subjectFilter = document.getElementById('attendanceSubjectFilter');
+        if (subjectFilter) {
+            subjectFilter.innerHTML = '<option value="all">All Subjects</option>';
+            allSubjects.forEach(subject => {
+                const option = document.createElement('option');
+                option.value = subject._id;
+                option.textContent = subject.name;
+                subjectFilter.appendChild(option);
+            });
         }
+
+        // Group records by session
+        const sessionsMap = new Map();
+        
+        for (const record of records) {
+            const session = record.sessionId || {};
+            const sessionId = session._id || record.sessionId;
+            const date = new Date(record.timestamp);
+            const dateStr = date.toLocaleDateString();
+            const timeStr = date.toLocaleTimeString();
+            
+            const key = sessionId || dateStr;
+            
+            if (!sessionsMap.has(key)) {
+                sessionsMap.set(key, {
+                    sessionId: sessionId,
+                    date: dateStr,
+                    time: timeStr,
+                    timestamp: record.timestamp,
+                    subject: session.subjectId?.name || 'General',
+                    subjectId: session.subjectId?._id || session.subjectId,
+                    presentStudents: [],
+                    presentCount: 0,
+                    totalStudents: allStudents.length
+                });
+            }
+            
+            const sessionData = sessionsMap.get(key);
+            const student = record.studentId || {};
+            
+            // Add student to present list if not already added
+            if (!sessionData.presentStudents.some(s => s.id === student._id)) {
+                sessionData.presentStudents.push({
+                    id: student._id,
+                    name: student.name || 'Unknown',
+                    rollNumber: student.rollNumber || 'N/A',
+                    section: student.section || 'N/A'
+                });
+                sessionData.presentCount = sessionData.presentStudents.length;
+            }
+        }
+
+        // Calculate absent students for each session
+        const sessions = Array.from(sessionsMap.values()).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        for (const session of sessions) {
+            const presentIds = new Set(session.presentStudents.map(s => s.id));
+            const absentStudents = allStudents.filter(student => !presentIds.has(student._id));
+            session.absentStudents = absentStudents;
+            session.absentCount = absentStudents.length;
+            session.attendancePercentage = session.totalStudents > 0 
+                ? ((session.presentCount / session.totalStudents) * 100).toFixed(1) 
+                : 0;
+        }
+
+        // Store sessions globally for filtering
+        window.allAttendanceSessions = sessions;
+        
+        // Render the table
+        renderAttendanceTable(sessions);
+        
     } catch (error) {
-        console.error('Error loading records:', error);
+        console.error('Error loading attendance records:', error);
         showToast('Error loading attendance records', 'error');
+    } finally {
+        hideLoading();
     }
+}
+
+// Render attendance table
+function renderAttendanceTable(sessions) {
+    const tbody = document.getElementById('attendanceTableBody');
+    if (!tbody) return;
+    
+    if (!sessions || sessions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No attendance records found</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = '';
+    
+    sessions.forEach((session, index) => {
+        const row = document.createElement('tr');
+        row.className = 'attendance-row';
+        row.setAttribute('data-session-index', index);
+        
+        // Determine percentage color class
+        let percentClass = '';
+        const percent = parseFloat(session.attendancePercentage);
+        if (percent >= 75) percentClass = 'attendance-good';
+        else if (percent >= 60) percentClass = 'attendance-warning';
+        else percentClass = 'attendance-critical';
+        
+        // Create present students preview (first 3)
+        let presentPreview = '';
+        const previewPresent = session.presentStudents.slice(0, 3);
+        previewPresent.forEach(s => {
+            presentPreview += `<span class="student-badge present">${s.name}</span>`;
+        });
+        if (session.presentStudents.length > 3) {
+            presentPreview += `<span class="student-badge more">+${session.presentStudents.length - 3} more</span>`;
+        }
+        if (session.presentStudents.length === 0) {
+            presentPreview = '<span class="student-badge empty">None</span>';
+        }
+        
+        // Create absent students preview (first 3)
+        let absentPreview = '';
+        const previewAbsent = session.absentStudents.slice(0, 3);
+        previewAbsent.forEach(s => {
+            absentPreview += `<span class="student-badge absent">${s.name}</span>`;
+        });
+        if (session.absentStudents.length > 3) {
+            absentPreview += `<span class="student-badge more">+${session.absentStudents.length - 3} more</span>`;
+        }
+        if (session.absentStudents.length === 0) {
+            absentPreview = '<span class="student-badge empty">All Present</span>';
+        }
+        
+        row.innerHTML = `
+            <td><strong>${session.date}</strong><br><small>${session.time}</small></td>
+            <td>${session.subject}</td>
+            <td class="students-cell present-cell">${presentPreview}</td>
+            <td class="students-cell absent-cell">${absentPreview}</td>
+            <td>${session.presentCount} / ${session.totalStudents}</td>
+            <td class="${percentClass}"><strong>${session.attendancePercentage}%</strong></td>
+        `;
+        
+        // Add click event to show details modal
+        row.addEventListener('click', () => showSessionDetails(session));
+        
+        tbody.appendChild(row);
+    });
+}
+
+// Show session details in modal
+function showSessionDetails(session) {
+    const modal = document.getElementById('sessionDetailsModal');
+    const title = document.getElementById('sessionModalTitle');
+    const content = document.getElementById('sessionModalContent');
+    
+    title.textContent = `Session Details - ${session.date} at ${session.time}`;
+    
+    // Create present students list
+    let presentHtml = '<div class="session-detail-group"><h4>✅ Present Students</h4><ul>';
+    session.presentStudents.forEach(s => {
+        presentHtml += `<li><strong>${s.name}</strong> (${s.rollNumber}) - Section: ${s.section}</li>`;
+    });
+    presentHtml += '</ul></div>';
+    
+    // Create absent students list
+    let absentHtml = '<div class="session-detail-group"><h4>❌ Absent Students</h4><ul>';
+    session.absentStudents.forEach(s => {
+        absentHtml += `<li><strong>${s.name}</strong> (${s.rollNumber}) - Section: ${s.section}</li>`;
+    });
+    absentHtml += '</ul></div>';
+    
+    content.innerHTML = `
+        <div style="margin-bottom: 15px;">
+            <p><strong>Subject:</strong> ${session.subject}</p>
+            <p><strong>Total Students:</strong> ${session.totalStudents}</p>
+            <p><strong>Present:</strong> ${session.presentCount}</p>
+            <p><strong>Absent:</strong> ${session.absentCount}</p>
+            <p><strong>Attendance Percentage:</strong> ${session.attendancePercentage}%</p>
+        </div>
+        ${presentHtml}
+        ${absentHtml}
+    `;
+    
+    modal.style.display = 'block';
+}
+
+// Close session details modal
+function closeSessionDetailsModal() {
+    document.getElementById('sessionDetailsModal').style.display = 'none';
+}
+
+// Filter attendance records
+async function filterAttendanceRecords() {
+    const dateFilter = document.getElementById('attendanceDateFilter').value;
+    const subjectFilter = document.getElementById('attendanceSubjectFilter').value;
+    
+    let filteredSessions = [...(window.allAttendanceSessions || [])];
+    
+    if (dateFilter) {
+        const filterDate = new Date(dateFilter).toLocaleDateString();
+        filteredSessions = filteredSessions.filter(session => session.date === filterDate);
+    }
+    
+    if (subjectFilter && subjectFilter !== 'all') {
+        filteredSessions = filteredSessions.filter(session => session.subjectId === subjectFilter);
+    }
+    
+    renderAttendanceTable(filteredSessions);
+    
+    if (filteredSessions.length === 0) {
+        showToast('No records found for the selected filters', 'info');
+    }
+}
+
+// Clear attendance filters
+function clearAttendanceFilters() {
+    document.getElementById('attendanceDateFilter').value = '';
+    document.getElementById('attendanceSubjectFilter').value = 'all';
+    renderAttendanceTable(window.allAttendanceSessions || []);
+    showToast('Filters cleared', 'info');
 }
 
 // Load students - Using API (FIXED - No Duplicates)
@@ -736,16 +938,6 @@ async function filterStudents() {
 }
 
 
-
-// View selfie
-function viewSelfie(url) {
-    if (url) {
-        window.open(url, '_blank');
-    } else {
-        showToast('No selfie available', 'info');
-    }
-}
-
 // Toggle dark mode
 function toggleDarkMode() {
     document.body.classList.toggle('dark-mode');
@@ -810,6 +1002,9 @@ window.showSection = showSection;
 window.startAttendance = startAttendance;
 window.stopAttendance = stopAttendance;
 window.filterStudents = filterStudents;
-window.viewSelfie = viewSelfie;
+//window.viewSelfie = viewSelfie;
 window.changePassword = changePassword;
 window.toggleDarkMode = toggleDarkMode;
+window.filterAttendanceRecords = filterAttendanceRecords;
+window.clearAttendanceFilters = clearAttendanceFilters;
+window.closeSessionDetailsModal = closeSessionDetailsModal;
