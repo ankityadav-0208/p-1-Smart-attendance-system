@@ -582,9 +582,11 @@ async function loadAttendanceRecords() {
     try {
         showLoading();
         
-        // Get session-wise attendance data
+        // Get session-wise attendance data from backend
         const response = await apiRequest('/teacher/session-attendance');
         const sessions = response.data || [];
+
+        console.log('Sessions data:', sessions);
 
         // Populate subject filter
         const subjectFilter = document.getElementById('attendanceSubjectFilter');
@@ -619,7 +621,7 @@ function renderAttendanceTable(sessions) {
     if (!tbody) return;
     
     if (!sessions || sessions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No attendance records found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No attendance records found</td></tr>';
         return;
     }
 
@@ -637,26 +639,26 @@ function renderAttendanceTable(sessions) {
         else if (percent >= 60) percentClass = 'attendance-warning';
         else percentClass = 'attendance-critical';
         
-        // Create present button
+        // Present button: shows "presentCount / totalStudents"
         const presentButton = `<button class="btn-view-students present" onclick="event.stopPropagation(); showStudentList('present', ${JSON.stringify(session.presentStudents).replace(/"/g, '&quot;')})">
             ${session.presentCount} / ${session.totalStudents}
         </button>`;
         
-        // Create absent button
+        // Absent button: shows "absentCount / totalStudents"
         const absentButton = `<button class="btn-view-students absent" onclick="event.stopPropagation(); showStudentList('absent', ${JSON.stringify(session.absentStudents).replace(/"/g, '&quot;')})">
-            ${session.absentCount}
+            ${session.absentCount} / ${session.totalStudents}
         </button>`;
         
         row.innerHTML = `
             <td><strong>${session.date}</strong></td>
             <td>${session.time}</td>
-            <td><strong>${session.subject}</strong><br><small>${session.subjectCode}</small></td>
+            <td><strong>${session.subject}</strong><br><small>${session.subjectCode || ''}</small></td>
             <td class="students-cell">${presentButton}</td>
             <td class="students-cell">${absentButton}</td>
             <td class="${percentClass}"><strong>${session.attendancePercentage}%</strong></td>
         `;
         
-        // Add click event to show full session details
+        // Add click event to show full session details (optional)
         row.addEventListener('click', () => showSessionDetails(session));
         
         tbody.appendChild(row);
@@ -669,11 +671,11 @@ function showStudentList(type, students) {
     const title = document.getElementById('sessionModalTitle');
     const content = document.getElementById('sessionModalContent');
     
-    title.textContent = type === 'present' ? 'Present Students' : 'Absent Students';
+    title.textContent = type === 'present' ? '📋 Present Students' : '📋 Absent Students';
     
     let html = '<div class="session-detail-group"><ul>';
     if (students.length === 0) {
-        html += '<li>No students</li>';
+        html += '<li>No students found</li>';
     } else {
         students.forEach(s => {
             html += `<li><strong>${s.name}</strong> (${s.rollNumber || 'N/A'}) - Section: ${s.section || 'N/A'}</li>`;
@@ -691,144 +693,81 @@ function showSessionDetails(session) {
     const title = document.getElementById('sessionModalTitle');
     const content = document.getElementById('sessionModalContent');
     
-    title.textContent = `Session Details - ${session.date} at ${session.time}`;
+    title.textContent = `📅 Session Details - ${session.date} at ${session.time}`;
     
     // Create present students list
     let presentHtml = '<div class="session-detail-group"><h4>✅ Present Students</h4><ul>';
-    session.presentStudents.forEach(s => {
-        presentHtml += `<li><strong>${s.name}</strong> (${s.rollNumber || 'N/A'}) - Section: ${s.section || 'N/A'}</li>`;
-    });
-    presentHtml += '</ul></div>';
-    
-    // Create absent students list
-    let absentHtml = '<div class="session-detail-group"><h4>❌ Absent Students</h4><ul>';
-    session.absentStudents.forEach(s => {
-        absentHtml += `<li><strong>${s.name}</strong> (${s.rollNumber || 'N/A'}) - Section: ${s.section || 'N/A'}</li>`;
-    });
-    absentHtml += '</ul></div>';
-    
-    content.innerHTML = `
-        <div style="margin-bottom: 15px;">
-            <p><strong>Subject:</strong> ${session.subject}</p>
-            <p><strong>Total Students:</strong> ${session.totalStudents}</p>
-            <p><strong>Present:</strong> ${session.presentCount}</p>
-            <p><strong>Absent:</strong> ${session.absentCount}</p>
-            <p><strong>Attendance Percentage:</strong> ${session.attendancePercentage}%</p>
-        </div>
-        ${presentHtml}
-        ${absentHtml}
-    `;
-    
-    modal.style.display = 'block';
-}
-
-// Render attendance table
-function renderAttendanceTable(sessions) {
-    const tbody = document.getElementById('attendanceTableBody');
-    if (!tbody) return;
-    
-    if (!sessions || sessions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No attendance records found</td></tr>';
-        return;
+    if (session.presentStudents.length === 0) {
+        presentHtml += '<li>No students present</li>';
+    } else {
+        session.presentStudents.forEach(s => {
+            presentHtml += `<li><strong>${s.name}</strong> (${s.rollNumber || 'N/A'}) - Section: ${s.section || 'N/A'}</li>`;
+        });
     }
-
-    tbody.innerHTML = '';
-    
-    sessions.forEach((session, index) => {
-        const row = document.createElement('tr');
-        row.className = 'attendance-row';
-        row.setAttribute('data-session-index', index);
-        
-        // Determine percentage color class
-        let percentClass = '';
-        const percent = parseFloat(session.attendancePercentage);
-        if (percent >= 75) percentClass = 'attendance-good';
-        else if (percent >= 60) percentClass = 'attendance-warning';
-        else percentClass = 'attendance-critical';
-        
-        // Create present students preview (first 3)
-        let presentPreview = '';
-        const previewPresent = session.presentStudents.slice(0, 3);
-        previewPresent.forEach(s => {
-            presentPreview += `<span class="student-badge present">${s.name}</span>`;
-        });
-        if (session.presentStudents.length > 3) {
-            presentPreview += `<span class="student-badge more">+${session.presentStudents.length - 3} more</span>`;
-        }
-        if (session.presentStudents.length === 0) {
-            presentPreview = '<span class="student-badge empty">None</span>';
-        }
-        
-        // Create absent students preview (first 3)
-        let absentPreview = '';
-        const previewAbsent = session.absentStudents.slice(0, 3);
-        previewAbsent.forEach(s => {
-            absentPreview += `<span class="student-badge absent">${s.name}</span>`;
-        });
-        if (session.absentStudents.length > 3) {
-            absentPreview += `<span class="student-badge more">+${session.absentStudents.length - 3} more</span>`;
-        }
-        if (session.absentStudents.length === 0) {
-            absentPreview = '<span class="student-badge empty">All Present</span>';
-        }
-        
-        row.innerHTML = `
-            <td><strong>${session.date}</strong><br><small>${session.time}</small></td>
-            <td>${session.subject}</td>
-            <td class="students-cell present-cell">${presentPreview}</td>
-            <td class="students-cell absent-cell">${absentPreview}</td>
-            <td>${session.presentCount} / ${session.totalStudents}</td>
-            <td class="${percentClass}"><strong>${session.attendancePercentage}%</strong></td>
-        `;
-        
-        // Add click event to show details modal
-        row.addEventListener('click', () => showSessionDetails(session));
-        
-        tbody.appendChild(row);
-    });
-}
-
-// Show session details in modal
-function showSessionDetails(session) {
-    const modal = document.getElementById('sessionDetailsModal');
-    const title = document.getElementById('sessionModalTitle');
-    const content = document.getElementById('sessionModalContent');
-    
-    title.textContent = `Session Details - ${session.date} at ${session.time}`;
-    
-    // Create present students list
-    let presentHtml = '<div class="session-detail-group"><h4>✅ Present Students</h4><ul>';
-    session.presentStudents.forEach(s => {
-        presentHtml += `<li><strong>${s.name}</strong> (${s.rollNumber}) - Section: ${s.section}</li>`;
-    });
     presentHtml += '</ul></div>';
     
     // Create absent students list
     let absentHtml = '<div class="session-detail-group"><h4>❌ Absent Students</h4><ul>';
-    session.absentStudents.forEach(s => {
-        absentHtml += `<li><strong>${s.name}</strong> (${s.rollNumber}) - Section: ${s.section}</li>`;
-    });
+    if (session.absentStudents.length === 0) {
+        absentHtml += '<li>No students absent</li>';
+    } else {
+        session.absentStudents.forEach(s => {
+            absentHtml += `<li><strong>${s.name}</strong> (${s.rollNumber || 'N/A'}) - Section: ${s.section || 'N/A'}</li>`;
+        });
+    }
     absentHtml += '</ul></div>';
     
     content.innerHTML = `
-        <div style="margin-bottom: 15px;">
-            <p><strong>Subject:</strong> ${session.subject}</p>
-            <p><strong>Total Students:</strong> ${session.totalStudents}</p>
-            <p><strong>Present:</strong> ${session.presentCount}</p>
-            <p><strong>Absent:</strong> ${session.absentCount}</p>
-            <p><strong>Attendance Percentage:</strong> ${session.attendancePercentage}%</p>
+        <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #ddd;">
+            <p><strong>📚 Subject:</strong> ${session.subject}</p>
+            <p><strong>👥 Total Students:</strong> ${session.totalStudents}</p>
+            <p><strong>✅ Present:</strong> ${session.presentCount}</p>
+            <p><strong>❌ Absent:</strong> ${session.absentCount}</p>
+            <p><strong>📊 Attendance Percentage:</strong> ${session.attendancePercentage}%</p>
         </div>
         ${presentHtml}
         ${absentHtml}
     `;
     
     modal.style.display = 'block';
+}
+
+// Filter attendance records
+async function filterAttendanceRecords() {
+    const dateFilter = document.getElementById('attendanceDateFilter').value;
+    const subjectFilter = document.getElementById('attendanceSubjectFilter').value;
+    
+    let filteredSessions = [...(window.allAttendanceSessions || [])];
+    
+    if (dateFilter) {
+        const filterDate = new Date(dateFilter).toLocaleDateString();
+        filteredSessions = filteredSessions.filter(session => session.date === filterDate);
+    }
+    
+    if (subjectFilter && subjectFilter !== 'all') {
+        filteredSessions = filteredSessions.filter(session => session.subject === subjectFilter);
+    }
+    
+    renderAttendanceTable(filteredSessions);
+    
+    if (filteredSessions.length === 0) {
+        showToast('No records found for the selected filters', 'info');
+    }
+}
+
+// Clear attendance filters
+function clearAttendanceFilters() {
+    document.getElementById('attendanceDateFilter').value = '';
+    document.getElementById('attendanceSubjectFilter').value = 'all';
+    renderAttendanceTable(window.allAttendanceSessions || []);
+    showToast('Filters cleared', 'info');
 }
 
 // Close session details modal
 function closeSessionDetailsModal() {
     document.getElementById('sessionDetailsModal').style.display = 'none';
 }
+
 
 // Filter attendance records
 async function filterAttendanceRecords() {
@@ -1056,3 +995,4 @@ window.toggleDarkMode = toggleDarkMode;
 window.filterAttendanceRecords = filterAttendanceRecords;
 window.clearAttendanceFilters = clearAttendanceFilters;
 window.closeSessionDetailsModal = closeSessionDetailsModal;
+window.showStudentList = showStudentList;
