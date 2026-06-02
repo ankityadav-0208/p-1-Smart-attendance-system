@@ -671,17 +671,49 @@ function showStudentList(type, students) {
     const title = document.getElementById('sessionModalTitle');
     const content = document.getElementById('sessionModalContent');
     
-    title.textContent = type === 'present' ? '📋 Present Students' : '📋 Absent Students';
+    const titleText = type === 'present' ? '✅ Present Students' : '❌ Absent Students';
+    title.textContent = titleText;
     
-    let html = '<div class="session-detail-group"><ul>';
-    if (students.length === 0) {
-        html += '<li>No students found</li>';
-    } else {
-        students.forEach(s => {
-            html += `<li><strong>${s.name}</strong> (${s.rollNumber || 'N/A'}) - Section: ${s.section || 'N/A'}</li>`;
-        });
+    if (!students || students.length === 0) {
+        content.innerHTML = '<div class="session-detail-group"><p class="text-center">No students found</p></div>';
+        modal.style.display = 'block';
+        return;
     }
-    html += '</ul></div>';
+    
+    // Create a nice table layout
+    let html = `
+        <div class="student-list-table-container">
+            <table class="student-list-table">
+                <thead>
+                    <tr>
+                        <th>S.No</th>
+                        <th>Roll Number</th>
+                        <th>Student Name</th>
+                        <th>Section</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    students.forEach((student, index) => {
+        html += `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${student.rollNumber || 'N/A'}</td>
+                <td><strong>${student.name}</strong></td>
+                <td>${student.section || 'N/A'}</td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        <div class="student-list-footer">
+            <strong>Total: ${students.length} student${students.length !== 1 ? 's' : ''}</strong>
+        </div>
+    `;
     
     content.innerHTML = html;
     modal.style.display = 'block';
@@ -695,40 +727,109 @@ function showSessionDetails(session) {
     
     title.textContent = `📅 Session Details - ${session.date} at ${session.time}`;
     
-    // Create present students list
-    let presentHtml = '<div class="session-detail-group"><h4>✅ Present Students</h4><ul>';
-    if (session.presentStudents.length === 0) {
-        presentHtml += '<li>No students present</li>';
-    } else {
-        session.presentStudents.forEach(s => {
-            presentHtml += `<li><strong>${s.name}</strong> (${s.rollNumber || 'N/A'}) - Section: ${s.section || 'N/A'}</li>`;
-        });
-    }
-    presentHtml += '</ul></div>';
-    
-    // Create absent students list
-    let absentHtml = '<div class="session-detail-group"><h4>❌ Absent Students</h4><ul>';
-    if (session.absentStudents.length === 0) {
-        absentHtml += '<li>No students absent</li>';
-    } else {
-        session.absentStudents.forEach(s => {
-            absentHtml += `<li><strong>${s.name}</strong> (${s.rollNumber || 'N/A'}) - Section: ${s.section || 'N/A'}</li>`;
-        });
-    }
-    absentHtml += '</ul></div>';
-    
-    content.innerHTML = `
-        <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #ddd;">
-            <p><strong>📚 Subject:</strong> ${session.subject}</p>
-            <p><strong>👥 Total Students:</strong> ${session.totalStudents}</p>
-            <p><strong>✅ Present:</strong> ${session.presentCount}</p>
-            <p><strong>❌ Absent:</strong> ${session.absentCount}</p>
-            <p><strong>📊 Attendance Percentage:</strong> ${session.attendancePercentage}%</p>
+    // Session summary
+    let summaryHtml = `
+        <div class="session-summary">
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <span class="summary-label">📚 Subject:</span>
+                    <span class="summary-value">${session.subject}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">👥 Total Students:</span>
+                    <span class="summary-value">${session.totalStudents}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">✅ Present:</span>
+                    <span class="summary-value present-count">${session.presentCount}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">❌ Absent:</span>
+                    <span class="summary-value absent-count">${session.absentCount}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">📊 Attendance:</span>
+                    <span class="summary-value attendance-percent">${session.attendancePercentage}%</span>
+                </div>
+            </div>
         </div>
-        ${presentHtml}
-        ${absentHtml}
     `;
     
+    // Present students table
+    let presentHtml = '<div class="student-section"><h4>✅ Present Students</h4>';
+    if (session.presentStudents.length === 0) {
+        presentHtml += '<p class="text-center">No students present</p>';
+    } else {
+        presentHtml += `
+            <div class="student-list-table-container">
+                <table class="student-list-table">
+                    <thead>
+                        <tr>
+                            <th>S.No</th>
+                            <th>Roll Number</th>
+                            <th>Student Name</th>
+                            <th>Section</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        session.presentStudents.forEach((student, index) => {
+            presentHtml += `
+                <tr class="present-row">
+                    <td>${index + 1}</td>
+                    <td>${student.rollNumber || 'N/A'}</td>
+                    <td><strong>${student.name}</strong></td>
+                    <td>${student.section || 'N/A'}</td>
+                </tr>
+            `;
+        });
+        presentHtml += `
+                    </tbody>
+                </table>
+            </div>
+            <div class="student-list-footer">Total: ${session.presentStudents.length} student${session.presentStudents.length !== 1 ? 's' : ''}</div>
+        `;
+    }
+    presentHtml += '</div>';
+    
+    // Absent students table
+    let absentHtml = '<div class="student-section"><h4>❌ Absent Students</h4>';
+    if (session.absentStudents.length === 0) {
+        absentHtml += '<p class="text-center">No students absent</p>';
+    } else {
+        absentHtml += `
+            <div class="student-list-table-container">
+                <table class="student-list-table">
+                    <thead>
+                        <tr>
+                            <th>S.No</th>
+                            <th>Roll Number</th>
+                            <th>Student Name</th>
+                            <th>Section</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        session.absentStudents.forEach((student, index) => {
+            absentHtml += `
+                <tr class="absent-row">
+                    <td>${index + 1}</td>
+                    <td>${student.rollNumber || 'N/A'}</td>
+                    <td><strong>${student.name}</strong></td>
+                    <td>${student.section || 'N/A'}</td>
+                </tr>
+            `;
+        });
+        absentHtml += `
+                    </tbody>
+                </table>
+            </div>
+            <div class="student-list-footer">Total: ${session.absentStudents.length} student${session.absentStudents.length !== 1 ? 's' : ''}</div>
+        `;
+    }
+    absentHtml += '</div>';
+    
+    content.innerHTML = summaryHtml + presentHtml + absentHtml;
     modal.style.display = 'block';
 }
 

@@ -273,9 +273,12 @@ router.get('/session-attendance', async (req, res) => {
     try {
         const { startDate, endDate, subjectId } = req.query;
         
+        // Get all students for total count
+        const allStudents = await User.find({ role: 'student' }).select('_id name rollNumber section');
+        const totalStudentsCount = allStudents.length;
+        
         // Build query for attendance records
         let recordQuery = {};
-        
         if (startDate && endDate) {
             recordQuery.timestamp = {
                 $gte: new Date(startDate),
@@ -312,7 +315,8 @@ router.get('/session-attendance', async (req, res) => {
                     subject: session.subjectId?.name || 'General',
                     subjectCode: session.subjectId?.code || '',
                     presentStudents: [],
-                    totalStudents: 0,
+                    presentStudentIds: new Set(), // Track IDs to avoid duplicates
+                    totalStudents: totalStudentsCount,
                     timestamp: session.startTime || record.timestamp
                 });
             }
@@ -320,7 +324,9 @@ router.get('/session-attendance', async (req, res) => {
             const sessionData = sessionsMap.get(sessionId);
             const student = record.studentId;
             
-            if (student && !sessionData.presentStudents.some(s => s.id === student._id.toString())) {
+            // Add student to present list if not already added
+            if (student && !sessionData.presentStudentIds.has(student._id.toString())) {
+                sessionData.presentStudentIds.add(student._id.toString());
                 sessionData.presentStudents.push({
                     id: student._id,
                     name: student.name,
@@ -330,19 +336,23 @@ router.get('/session-attendance', async (req, res) => {
             }
         }
         
-        // Get all students for total count
-        const allStudents = await User.find({ role: 'student' }).select('_id name rollNumber section');
-        
         // Calculate absent students for each session
         const sessions = Array.from(sessionsMap.values()).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         
         for (const session of sessions) {
-            session.totalStudents = allStudents.length;
-            const presentIds = new Set(session.presentStudents.map(s => s.id));
+            // Get present student IDs
+            const presentIds = session.presentStudentIds;
+            
+            // Find absent students (students not in presentIds)
             const absentStudents = allStudents.filter(student => !presentIds.has(student._id.toString()));
+            
             session.absentStudents = absentStudents;
             session.absentCount = absentStudents.length;
             session.presentCount = session.presentStudents.length;
+            
+            // Remove the temporary Set before sending response
+            delete session.presentStudentIds;
+            
             session.attendancePercentage = session.totalStudents > 0 
                 ? ((session.presentCount / session.totalStudents) * 100).toFixed(1) 
                 : 0;
