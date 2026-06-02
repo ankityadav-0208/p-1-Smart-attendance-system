@@ -1675,3 +1675,28 @@ body.dark-mode .profile-badge {
     padding: 5px 0;
     border-bottom: 1px solid #f0f0f0;
 }
+
+/* Student View Buttons */
+.btn-view-students {
+    background: #4a90e2;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-view-students.present {
+    background: #28a745;
+}
+
+.btn-view-students.absent {
+    background: #dc3545;
+}
+
+.btn-view-students:hover {
+    opacity: 0.8;
+    transform: scale(1.02);
+}

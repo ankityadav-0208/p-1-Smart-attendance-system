@@ -577,87 +577,26 @@ async function stopAttendance() {
     }
 }
 
-// Load attendance records - Grouped by session (Date-wise)
+// Load attendance records - Session-wise view
 async function loadAttendanceRecords() {
     try {
         showLoading();
         
-        // Get all attendance records
-        const recordsResponse = await apiRequest('/teacher/attendance-records');
-        const records = recordsResponse.data || [];
+        // Get session-wise attendance data
+        const response = await apiRequest('/teacher/session-attendance');
+        const sessions = response.data || [];
 
-        // Get all students
-        const studentsResponse = await apiRequest('/teacher/students');
-        const allStudents = studentsResponse.data || [];
-
-        // Get all subjects for filter
-        const subjectsResponse = await apiRequest('/teacher/subjects');
-        const allSubjects = subjectsResponse.data || [];
-        
-        // Populate subject filter dropdown
+        // Populate subject filter
         const subjectFilter = document.getElementById('attendanceSubjectFilter');
-        if (subjectFilter) {
+        if (subjectFilter && sessions.length > 0) {
+            const subjects = [...new Set(sessions.map(s => s.subject))];
             subjectFilter.innerHTML = '<option value="all">All Subjects</option>';
-            allSubjects.forEach(subject => {
+            subjects.forEach(subject => {
                 const option = document.createElement('option');
-                option.value = subject._id;
-                option.textContent = subject.name;
+                option.value = subject;
+                option.textContent = subject;
                 subjectFilter.appendChild(option);
             });
-        }
-
-        // Group records by session
-        const sessionsMap = new Map();
-        
-        for (const record of records) {
-            const session = record.sessionId || {};
-            const sessionId = session._id || record.sessionId;
-            const date = new Date(record.timestamp);
-            const dateStr = date.toLocaleDateString();
-            const timeStr = date.toLocaleTimeString();
-            
-            const key = sessionId || dateStr;
-            
-            if (!sessionsMap.has(key)) {
-                sessionsMap.set(key, {
-                    sessionId: sessionId,
-                    date: dateStr,
-                    time: timeStr,
-                    timestamp: record.timestamp,
-                    subject: session.subjectId?.name || 'General',
-                    subjectId: session.subjectId?._id || session.subjectId,
-                    presentStudents: [],
-                    presentCount: 0,
-                    totalStudents: allStudents.length
-                });
-            }
-            
-            const sessionData = sessionsMap.get(key);
-            const student = record.studentId || {};
-            
-            // Add student to present list if not already added
-            if (!sessionData.presentStudents.some(s => s.id === student._id)) {
-                sessionData.presentStudents.push({
-                    id: student._id,
-                    name: student.name || 'Unknown',
-                    rollNumber: student.rollNumber || 'N/A',
-                    section: student.section || 'N/A'
-                });
-                sessionData.presentCount = sessionData.presentStudents.length;
-            }
-        }
-
-        // Calculate absent students for each session
-        const sessions = Array.from(sessionsMap.values()).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        
-        for (const session of sessions) {
-            const presentIds = new Set(session.presentStudents.map(s => s.id));
-            const absentStudents = allStudents.filter(student => !presentIds.has(student._id));
-            session.absentStudents = absentStudents;
-            session.absentCount = absentStudents.length;
-            session.attendancePercentage = session.totalStudents > 0 
-                ? ((session.presentCount / session.totalStudents) * 100).toFixed(1) 
-                : 0;
         }
 
         // Store sessions globally for filtering
@@ -672,6 +611,115 @@ async function loadAttendanceRecords() {
     } finally {
         hideLoading();
     }
+}
+
+// Render attendance table
+function renderAttendanceTable(sessions) {
+    const tbody = document.getElementById('attendanceTableBody');
+    if (!tbody) return;
+    
+    if (!sessions || sessions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No attendance records found</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = '';
+    
+    sessions.forEach((session) => {
+        const row = document.createElement('tr');
+        row.className = 'attendance-row';
+        row.style.cursor = 'pointer';
+        
+        // Determine percentage color class
+        let percentClass = '';
+        const percent = parseFloat(session.attendancePercentage);
+        if (percent >= 75) percentClass = 'attendance-good';
+        else if (percent >= 60) percentClass = 'attendance-warning';
+        else percentClass = 'attendance-critical';
+        
+        // Create present button
+        const presentButton = `<button class="btn-view-students present" onclick="event.stopPropagation(); showStudentList('present', ${JSON.stringify(session.presentStudents).replace(/"/g, '&quot;')})">
+            ${session.presentCount} / ${session.totalStudents}
+        </button>`;
+        
+        // Create absent button
+        const absentButton = `<button class="btn-view-students absent" onclick="event.stopPropagation(); showStudentList('absent', ${JSON.stringify(session.absentStudents).replace(/"/g, '&quot;')})">
+            ${session.absentCount}
+        </button>`;
+        
+        row.innerHTML = `
+            <td><strong>${session.date}</strong></td>
+            <td>${session.time}</td>
+            <td><strong>${session.subject}</strong><br><small>${session.subjectCode}</small></td>
+            <td class="students-cell">${presentButton}</td>
+            <td class="students-cell">${absentButton}</td>
+            <td class="${percentClass}"><strong>${session.attendancePercentage}%</strong></td>
+        `;
+        
+        // Add click event to show full session details
+        row.addEventListener('click', () => showSessionDetails(session));
+        
+        tbody.appendChild(row);
+    });
+}
+
+// Show student list in modal (for present/absent buttons)
+function showStudentList(type, students) {
+    const modal = document.getElementById('sessionDetailsModal');
+    const title = document.getElementById('sessionModalTitle');
+    const content = document.getElementById('sessionModalContent');
+    
+    title.textContent = type === 'present' ? 'Present Students' : 'Absent Students';
+    
+    let html = '<div class="session-detail-group"><ul>';
+    if (students.length === 0) {
+        html += '<li>No students</li>';
+    } else {
+        students.forEach(s => {
+            html += `<li><strong>${s.name}</strong> (${s.rollNumber || 'N/A'}) - Section: ${s.section || 'N/A'}</li>`;
+        });
+    }
+    html += '</ul></div>';
+    
+    content.innerHTML = html;
+    modal.style.display = 'block';
+}
+
+// Show full session details in modal
+function showSessionDetails(session) {
+    const modal = document.getElementById('sessionDetailsModal');
+    const title = document.getElementById('sessionModalTitle');
+    const content = document.getElementById('sessionModalContent');
+    
+    title.textContent = `Session Details - ${session.date} at ${session.time}`;
+    
+    // Create present students list
+    let presentHtml = '<div class="session-detail-group"><h4>✅ Present Students</h4><ul>';
+    session.presentStudents.forEach(s => {
+        presentHtml += `<li><strong>${s.name}</strong> (${s.rollNumber || 'N/A'}) - Section: ${s.section || 'N/A'}</li>`;
+    });
+    presentHtml += '</ul></div>';
+    
+    // Create absent students list
+    let absentHtml = '<div class="session-detail-group"><h4>❌ Absent Students</h4><ul>';
+    session.absentStudents.forEach(s => {
+        absentHtml += `<li><strong>${s.name}</strong> (${s.rollNumber || 'N/A'}) - Section: ${s.section || 'N/A'}</li>`;
+    });
+    absentHtml += '</ul></div>';
+    
+    content.innerHTML = `
+        <div style="margin-bottom: 15px;">
+            <p><strong>Subject:</strong> ${session.subject}</p>
+            <p><strong>Total Students:</strong> ${session.totalStudents}</p>
+            <p><strong>Present:</strong> ${session.presentCount}</p>
+            <p><strong>Absent:</strong> ${session.absentCount}</p>
+            <p><strong>Attendance Percentage:</strong> ${session.attendancePercentage}%</p>
+        </div>
+        ${presentHtml}
+        ${absentHtml}
+    `;
+    
+    modal.style.display = 'block';
 }
 
 // Render attendance table

@@ -267,6 +267,102 @@ router.get('/report', async (req, res) => {
     }
 });
 
+// @desc    Get session-wise attendance records for teacher
+// @route   GET /api/teacher/session-attendance
+router.get('/session-attendance', async (req, res) => {
+    try {
+        const { startDate, endDate, subjectId } = req.query;
+        
+        // Build query for attendance records
+        let recordQuery = {};
+        
+        if (startDate && endDate) {
+            recordQuery.timestamp = {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate)
+            };
+        }
+        
+        // Get all attendance records
+        const records = await AttendanceRecord.find(recordQuery)
+            .populate('studentId', 'name rollNumber section')
+            .populate({
+                path: 'sessionId',
+                populate: {
+                    path: 'subjectId',
+                    select: 'name code'
+                }
+            })
+            .sort('-timestamp');
+        
+        // Group by session
+        const sessionsMap = new Map();
+        
+        for (const record of records) {
+            const session = record.sessionId;
+            if (!session) continue;
+            
+            const sessionId = session._id.toString();
+            
+            if (!sessionsMap.has(sessionId)) {
+                sessionsMap.set(sessionId, {
+                    sessionId: sessionId,
+                    date: session.startTime ? new Date(session.startTime).toLocaleDateString() : new Date(record.timestamp).toLocaleDateString(),
+                    time: session.startTime ? new Date(session.startTime).toLocaleTimeString() : new Date(record.timestamp).toLocaleTimeString(),
+                    subject: session.subjectId?.name || 'General',
+                    subjectCode: session.subjectId?.code || '',
+                    presentStudents: [],
+                    totalStudents: 0,
+                    timestamp: session.startTime || record.timestamp
+                });
+            }
+            
+            const sessionData = sessionsMap.get(sessionId);
+            const student = record.studentId;
+            
+            if (student && !sessionData.presentStudents.some(s => s.id === student._id.toString())) {
+                sessionData.presentStudents.push({
+                    id: student._id,
+                    name: student.name,
+                    rollNumber: student.rollNumber,
+                    section: student.section
+                });
+            }
+        }
+        
+        // Get all students for total count
+        const allStudents = await User.find({ role: 'student' }).select('_id name rollNumber section');
+        
+        // Calculate absent students for each session
+        const sessions = Array.from(sessionsMap.values()).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        for (const session of sessions) {
+            session.totalStudents = allStudents.length;
+            const presentIds = new Set(session.presentStudents.map(s => s.id));
+            const absentStudents = allStudents.filter(student => !presentIds.has(student._id.toString()));
+            session.absentStudents = absentStudents;
+            session.absentCount = absentStudents.length;
+            session.presentCount = session.presentStudents.length;
+            session.attendancePercentage = session.totalStudents > 0 
+                ? ((session.presentCount / session.totalStudents) * 100).toFixed(1) 
+                : 0;
+        }
+        
+        res.json({
+            success: true,
+            data: sessions
+        });
+        
+    } catch (error) {
+        console.error('Error in session-attendance:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+});
+
+
 // @desc    Get all subjects for teacher
 // @route   GET /api/teacher/subjects
 router.get('/subjects', async (req, res) => {
