@@ -41,11 +41,11 @@ app.use('/uploads', (req, res, next) => {
 }, express.static(path.join(__dirname, 'uploads')));
 
 // Rate limiting
-const limiter = rateLimit({
-    windowMs: 10 * 60 * 1000,
-    max: 100
-});
-app.use('/api/', limiter);
+//const limiter = rateLimit({
+//    windowMs: 10 * 60 * 1000,
+//    max: 100
+//});
+//app.use('/api/', limiter);
 
 
 // ✅ IMPORTANT: Mount API routes BEFORE static file serving
