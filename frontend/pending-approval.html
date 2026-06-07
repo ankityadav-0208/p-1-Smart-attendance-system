@@ -120,7 +120,7 @@
             
             try {
                 // Call your backend API to check user status
-                const response = await fetch(`${API_BASE_URL}/auth/status`, {
+                const response = await fetch(`${API_BASE_URL}/auth/me`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`,

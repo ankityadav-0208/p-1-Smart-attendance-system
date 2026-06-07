@@ -65,13 +65,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Initialize event listeners
 function initializeEventListeners() {
-    // Login form
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.addEventListener('submit', handleLoginSubmit);
-    }
+    // Login form has inline onsubmit in HTML - no duplicate listener needed
     
-    // Registration forms
+    // Registration forms (no inline onsubmit in HTML)
     const studentForm = document.getElementById('studentRegisterForm');
     if (studentForm) {
         studentForm.addEventListener('submit', handleStudentRegistration);
@@ -172,7 +168,7 @@ async function handleStudentRegistration(e) {
     
     const userData = {
         name: document.getElementById('studentName').value,
-        roll: document.getElementById('studentRoll').value,
+        rollNumber: document.getElementById('studentRoll').value,
         section: document.getElementById('studentSection').value,
         email: document.getElementById('studentEmail').value,
         password: password
@@ -190,7 +186,7 @@ async function handleStudentRegistration(e) {
                 name: userData.name,
                 email: userData.email,
                 password: userData.password,
-                rollNumber: userData.roll,
+                rollNumber: userData.rollNumber,
                 section: userData.section
             })
         });

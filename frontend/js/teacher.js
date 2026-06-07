@@ -527,19 +527,38 @@ function generateSessionToken() {
 function startQRTimer() {
     let timeLeft = 300;
     const timerElement = document.getElementById('qrTimer');
-    
-    qrRefreshInterval = setInterval(() => {
+
+    qrRefreshInterval = setInterval(async () => {
         timeLeft--;
-        
+
         const minutes = Math.floor(timeLeft / 60);
         const seconds = timeLeft % 60;
         timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        
-        if (timeLeft % 120 === 0 && currentSession) {
-            currentSession.sessionToken = generateSessionToken();
-            generateQRCode(currentSession.id, currentSession.sessionToken);
+
+        // Refresh QR every 5 seconds - get new token from DB so validation works
+        if (timeLeft % 5 === 0 && currentSession) {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(
+                    `${API.baseURL}/teacher/refresh-token/${currentSession.id}`,
+                    {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+                const data = await response.json();
+                if (data.success) {
+                    currentSession.sessionToken = data.data.sessionToken;
+                    generateQRCode(currentSession.id, currentSession.sessionToken);
+                }
+            } catch (err) {
+                console.error('QR refresh failed:', err);
+            }
         }
-        
+
         if (timeLeft <= 0) {
             stopAttendance();
         }

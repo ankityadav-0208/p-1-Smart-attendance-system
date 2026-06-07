@@ -83,6 +83,38 @@ router.put('/stop-session/:id', async (req, res) => {
     }
 });
 
+// @desc    Refresh session token every 5 seconds
+// @route   PUT /api/teacher/refresh-token/:id
+router.put('/refresh-token/:id', async (req, res) => {
+    try {
+        const session = await AttendanceSession.findById(req.params.id);
+
+        if (!session) {
+            return res.status(404).json({ success: false, message: 'Session not found' });
+        }
+
+        if (session.createdBy.toString() !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Not authorized' });
+        }
+
+        if (!session.isActive || session.expiresAt < new Date()) {
+            return res.status(400).json({ success: false, message: 'Session is no longer active' });
+        }
+
+        session.sessionToken = uuidv4();
+        await session.save();
+
+        res.json({
+            success: true,
+            data: { sessionToken: session.sessionToken }
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 // @desc    Get active sessions
 // @route   GET /api/teacher/active-sessions
 router.get('/active-sessions', async (req, res) => {
