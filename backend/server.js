@@ -56,7 +56,6 @@ app.use('/api/student', studentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/analytics', analyticsRoutes);
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ✅ Test endpoint to verify API is working
 app.get('/api/health', (req, res) => {
