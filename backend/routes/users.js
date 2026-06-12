@@ -110,12 +110,23 @@ router.get('/profile/me', protect, async (req, res) => {
 // @route   PUT /api/users/profile
 router.put('/profile', protect, async (req, res) => {
     try {
-        const { name, section, department } = req.body;
+        const { name, section, department, defaultSessionDuration, defaultAllowedRadius, defaultLocation } = req.body;
         
         const updateData = {};
         if (name) updateData.name = name;
         if (section && req.user.role === 'student') updateData.section = section;
         if (department && req.user.role === 'teacher') updateData.department = department;
+
+        if (req.user.role === 'teacher') {
+            if (defaultSessionDuration !== undefined) updateData.defaultSessionDuration = defaultSessionDuration;
+            if (defaultAllowedRadius !== undefined) updateData.defaultAllowedRadius = defaultAllowedRadius;
+            if (defaultLocation !== undefined) {
+                updateData.defaultLocation = {
+                    latitude: Number(defaultLocation.latitude),
+                    longitude: Number(defaultLocation.longitude)
+                };
+            }
+        }
 
         const user = await User.findByIdAndUpdate(
             req.user.id,

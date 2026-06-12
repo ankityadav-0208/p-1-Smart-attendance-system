@@ -60,11 +60,34 @@ async function loadTeacherData() {
 }
 
 // Setup settings page
-function setupSettings() {
-    const user = JSON.parse(sessionStorage.getItem('currentUser'));
-    document.getElementById('settingsName').value = user.name || '';
-    document.getElementById('settingsEmail').value = user.email || '';
-    document.getElementById('settingsDepartment').value = user.department || 'Faculty';
+async function setupSettings() {
+    try {
+        const response = await apiRequest('/users/profile/me');
+        if (response.success && response.data) {
+            const user = response.data;
+            document.getElementById('settingsName').value = user.name || '';
+            document.getElementById('settingsEmail').value = user.email || '';
+            document.getElementById('settingsDepartment').value = user.department || 'Faculty';
+            const employeeIdField = document.getElementById('settingsEmployeeId');
+            if (employeeIdField) employeeIdField.value = user.employeeId || 'N/A';
+            
+            document.getElementById('defaultRadius').value = user.defaultAllowedRadius !== undefined ? user.defaultAllowedRadius : 1000;
+            document.getElementById('defaultDuration').value = user.defaultSessionDuration !== undefined ? user.defaultSessionDuration : 5;
+            document.getElementById('defaultLatitude').value = user.defaultLocation?.latitude !== undefined ? user.defaultLocation.latitude : 29.171743;
+            document.getElementById('defaultLongitude').value = user.defaultLocation?.longitude !== undefined ? user.defaultLocation.longitude : 75.735818;
+        }
+    } catch (error) {
+        console.error('Error setting up settings:', error);
+        // Fallback to sessionStorage
+        const user = JSON.parse(sessionStorage.getItem('currentUser'));
+        if (user) {
+            document.getElementById('settingsName').value = user.name || '';
+            document.getElementById('settingsEmail').value = user.email || '';
+            document.getElementById('settingsDepartment').value = user.department || 'Faculty';
+            const employeeIdField = document.getElementById('settingsEmployeeId');
+            if (employeeIdField) employeeIdField.value = user.employeeId || 'N/A';
+        }
+    }
 }
 
 // Show different sections
@@ -87,39 +110,85 @@ function showSection(section) {
     if (section === 'attendance') loadAttendanceRecords();
     if (section === 'students') loadStudents();
     if (section === 'subjectAnalytics') loadTeacherSubjectAnalytics();
+    if (section === 'settings') setupSettings();
 }
 
 // Load dashboard statistics - Using API
 async function loadDashboardStats() {
     try {
-        // Get students list
-        const studentsResponse = await apiRequest('/teacher/students');
-        const students = studentsResponse.data || [];
-        document.getElementById('totalStudents').textContent = students.length;
-
-        // Get today's attendance
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        
-        const attendanceResponse = await apiRequest(`/teacher/attendance-records?startDate=${today.toISOString()}&endDate=${tomorrow.toISOString()}`);
-        const todayRecords = attendanceResponse.data || [];
-        
-        const uniqueStudents = new Set(todayRecords.map(r => r.studentId?._id || r.studentId));
-        document.getElementById('todayAttendance').textContent = uniqueStudents.size;
-
-        if (students.length > 0) {
-            const avg = (uniqueStudents.size / students.length) * 100;
-            document.getElementById('avgAttendance').textContent = avg.toFixed(1) + '%';
+        const response = await apiRequest('/teacher/dashboard-overview');
+        if (!response.success) {
+            throw new Error(response.message || 'Failed to fetch overview data');
         }
-
-        // Get active sessions
-        const sessionsResponse = await apiRequest('/teacher/active-sessions');
-        document.getElementById('activeSessions').textContent = (sessionsResponse.data || []).length;
-
-        // loadAttendanceChart is disabled - chart removed
-        // loadAttendanceChart();
+        
+        const subjectsData = response.data || [];
+        
+        // 1. Calculate aggregate stats for top cards
+        let totalStudentsCount = 0;
+        let todayPresentCount = 0;
+        let todayStudentsWithSession = 0;
+        let avgAttendanceSum = 0;
+        
+        subjectsData.forEach(sub => {
+            totalStudentsCount += sub.totalStudents || 0;
+            if (sub.todayAttendance?.hasSession) {
+                todayPresentCount += sub.todayAttendance.presentCount || 0;
+                todayStudentsWithSession += sub.totalStudents || 0;
+            }
+            avgAttendanceSum += sub.averageAttendance || 0;
+        });
+        
+        // Populate top cards
+        document.getElementById('totalStudents').textContent = totalStudentsCount;
+        
+        // Today's Attendance card
+        if (todayStudentsWithSession > 0) {
+            const todayPercentage = (todayPresentCount / todayStudentsWithSession) * 100;
+            document.getElementById('todayAttendance').textContent = todayPercentage.toFixed(1) + '%';
+        } else {
+            document.getElementById('todayAttendance').textContent = 'No Sessions';
+        }
+        
+        // Average Attendance card
+        if (subjectsData.length > 0) {
+            const overallAverage = avgAttendanceSum / subjectsData.length;
+            document.getElementById('avgAttendance').textContent = overallAverage.toFixed(1) + '%';
+        } else {
+            document.getElementById('avgAttendance').textContent = '0%';
+        }
+        
+        // 2. Populate "My Subjects Overview" table
+        const tbody = document.getElementById('mySubjectsOverviewBody');
+        if (tbody) {
+            tbody.innerHTML = '';
+            
+            if (subjectsData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-secondary);">No subjects assigned to you.</td></tr>';
+            } else {
+                subjectsData.forEach(sub => {
+                    const row = document.createElement('tr');
+                    
+                    let todayText = '';
+                    if (sub.todayAttendance?.hasSession) {
+                        todayText = `<span style="font-weight: 600; color: var(--success);">${sub.todayAttendance.percentage}%</span> (${sub.todayAttendance.presentCount}/${sub.totalStudents})`;
+                    } else {
+                        todayText = `<span style="color: var(--text-secondary); font-style: italic;">No session</span>`;
+                    }
+                    
+                    row.innerHTML = `
+                        <td><strong>${sub.code}</strong></td>
+                        <td>${sub.name}</td>
+                        <td>Semester ${sub.semester}</td>
+                        <td>Section ${sub.section}</td>
+                        <td>${sub.totalStudents}</td>
+                        <td>${todayText}</td>
+                        <td><strong>${(sub.averageAttendance || 0).toFixed(1)}%</strong></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+        
     } catch (error) {
         console.error('Error loading stats:', error);
         showToast('Error loading dashboard data', 'error');
@@ -447,20 +516,12 @@ async function startAttendance() {
             return;
         }
         
-        // Get classroom location from user or default
-        const classroomLocation = {
-            latitude: 29.171743,
-            longitude: 75.735818
-        };
-        
         console.log('📤 Starting attendance session for subject:', subjectName);
         
         const response = await apiRequest('/teacher/start-session', {
             method: 'POST',
             body: JSON.stringify({ 
-                classroomLocation,
-                allowedRadius: 1000,
-                subjectId: subjectId  // ✅ Include subject ID
+                subjectId: subjectId  // ✅ Include subject ID, let backend fallback to presets
             })
         });
 
@@ -525,18 +586,22 @@ function generateSessionToken() {
 
 // Start QR refresh timer
 function startQRTimer() {
-    let timeLeft = 300;
+    let timeLeft = 300; // fallback 5 minutes
+    if (currentSession && currentSession.expiresAt) {
+        const expiresTime = new Date(currentSession.expiresAt).getTime();
+        timeLeft = Math.max(0, Math.floor((expiresTime - Date.now()) / 1000));
+    }
     const timerElement = document.getElementById('qrTimer');
 
     qrRefreshInterval = setInterval(async () => {
         timeLeft--;
 
-        const minutes = Math.floor(timeLeft / 60);
-        const seconds = timeLeft % 60;
+        const minutes = Math.max(0, Math.floor(timeLeft / 60));
+        const seconds = Math.max(0, timeLeft % 60);
         timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
 
         // Refresh QR every 5 seconds - get new token from DB so validation works
-        if (timeLeft % 5 === 0 && currentSession) {
+        if (timeLeft > 0 && timeLeft % 5 === 0 && currentSession) {
             try {
                 const token = localStorage.getItem('token');
                 const response = await fetch(
@@ -1052,31 +1117,131 @@ function toggleDarkMode() {
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
 }
 
-// Change password - Using API
-async function changePassword() {
-    const currentPassword = prompt('Enter current password:');
-    if (!currentPassword) return;
+// Change password - Using API Form
+async function updateTeacherPassword() {
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
     
-    const newPassword = prompt('Enter new password (minimum 6 characters):');
-    if (newPassword && newPassword.length >= 6) {
-        try {
-            showLoading();
-            await apiRequest('/users/change-password', {
-                method: 'PUT',
-                body: JSON.stringify({ 
-                    currentPassword: currentPassword,
-                    newPassword: newPassword 
-                })
-            });
+    if (!currentPassword || !newPassword) {
+        showToast('Please fill all password fields', 'error');
+        return;
+    }
+    
+    if (newPassword.length < 6) {
+        showToast('New password must be at least 6 characters', 'error');
+        return;
+    }
+    
+    try {
+        showLoading();
+        const response = await apiRequest('/users/change-password', {
+            method: 'PUT',
+            body: JSON.stringify({ currentPassword, newPassword })
+        });
+        
+        if (response.success) {
             showToast('Password updated successfully', 'success');
-        } catch (error) {
-            console.error('Password update error:', error);
-            showToast('Error updating password', 'error');
-        } finally {
-            hideLoading();
+            document.getElementById('currentPassword').value = '';
+            document.getElementById('newPassword').value = '';
         }
-    } else if (newPassword) {
-        showToast('Password must be at least 6 characters', 'error');
+    } catch (error) {
+        console.error('Password update error:', error);
+        showToast(error.message || 'Error updating password', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Toggle password visibility
+function togglePasswordVisibility(id) {
+    const input = document.getElementById(id);
+    if (!input) return;
+    
+    const button = input.parentElement.querySelector('.toggle-password-btn');
+    const icon = button ? button.querySelector('i') : null;
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        if (icon) {
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        }
+    } else {
+        input.type = 'password';
+        if (icon) {
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+}
+
+// Get current location coordinates
+function getCurrentLocationPresets() {
+    if (!navigator.geolocation) {
+        showToast('Geolocation is not supported by your browser', 'error');
+        return;
+    }
+    
+    showToast('Getting current location...', 'info');
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            document.getElementById('defaultLatitude').value = position.coords.latitude.toFixed(6);
+            document.getElementById('defaultLongitude').value = position.coords.longitude.toFixed(6);
+            showToast('GPS coordinates fetched successfully', 'success');
+        },
+        (error) => {
+            console.error('Error getting location:', error);
+            showToast('Failed to get location: ' + error.message, 'error');
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    );
+}
+
+// Save teacher presets
+async function saveTeacherPresets() {
+    const defaultAllowedRadius = parseInt(document.getElementById('defaultRadius').value, 10);
+    const defaultSessionDuration = parseInt(document.getElementById('defaultDuration').value, 10);
+    const lat = parseFloat(document.getElementById('defaultLatitude').value);
+    const lon = parseFloat(document.getElementById('defaultLongitude').value);
+    
+    if (isNaN(defaultAllowedRadius) || defaultAllowedRadius < 5) {
+        showToast('Default Radius must be a number of at least 5 meters', 'error');
+        return;
+    }
+    
+    if (isNaN(defaultSessionDuration) || defaultSessionDuration < 1) {
+        showToast('Default Session Duration must be a number of at least 1 minute', 'error');
+        return;
+    }
+    
+    if (isNaN(lat) || isNaN(lon)) {
+        showToast('Please enter valid location coordinates', 'error');
+        return;
+    }
+    
+    try {
+        showLoading();
+        const response = await apiRequest('/users/profile', {
+            method: 'PUT',
+            body: JSON.stringify({
+                defaultAllowedRadius,
+                defaultSessionDuration,
+                defaultLocation: {
+                    latitude: lat,
+                    longitude: lon
+                }
+            })
+        });
+        
+        if (response.success) {
+            showToast('Presets saved successfully', 'success');
+            await setupSettings();
+        }
+    } catch (error) {
+        console.error('Error saving teacher presets:', error);
+        showToast(error.message || 'Error saving presets', 'error');
+    } finally {
+        hideLoading();
     }
 }
 
@@ -1109,10 +1274,12 @@ window.showSection = showSection;
 window.startAttendance = startAttendance;
 window.stopAttendance = stopAttendance;
 window.filterStudents = filterStudents;
-//window.viewSelfie = viewSelfie;
-window.changePassword = changePassword;
 window.toggleDarkMode = toggleDarkMode;
 window.filterAttendanceRecords = filterAttendanceRecords;
 window.clearAttendanceFilters = clearAttendanceFilters;
 window.closeSessionDetailsModal = closeSessionDetailsModal;
 window.showStudentList = showStudentList;
+window.updateTeacherPassword = updateTeacherPassword;
+window.togglePasswordVisibility = togglePasswordVisibility;
+window.getCurrentLocationPresets = getCurrentLocationPresets;
+window.saveTeacherPresets = saveTeacherPresets;

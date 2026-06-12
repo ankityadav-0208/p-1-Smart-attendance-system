@@ -417,6 +417,7 @@ async function loadSubjects() {
                 <td>${subject.name}</td>
                 <td>${subject.department}</td>
                 <td>Semester ${subject.semester}</td>
+                <td>Section ${subject.section || 'A'}</td>
                 <td>${subject.teacherId?.name || 'Not Assigned'}</td>
                 <td>
                     <button class="btn btn-sm btn-danger" onclick="deleteSubject('${subject._id}')">
@@ -464,6 +465,7 @@ async function addSubject() {
     const code = document.getElementById('subjectCode').value.trim().toUpperCase();
     const department = document.getElementById('subjectDepartment').value;
     const semester = document.getElementById('subjectSemester').value;
+    const section = document.getElementById('subjectSection').value;
     const teacherId = document.getElementById('subjectTeacher').value;
     
     if (!name || !code) {
@@ -476,7 +478,7 @@ async function addSubject() {
         
         const response = await apiRequest('/subjects', {
             method: 'POST',
-            body: JSON.stringify({ name, code, department, semester, teacherId })
+            body: JSON.stringify({ name, code, department, semester, section, teacherId })
         });
         
         if (response.success) {

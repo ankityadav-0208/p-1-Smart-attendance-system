@@ -44,12 +44,12 @@ router.get('/:id', async (req, res) => {
 // @route   POST /api/subjects
 router.post('/', authorize('admin'), async (req, res) => {
     try {
-        const { name, code, department, semester, teacherId, description } = req.body;
+        const { name, code, department, semester, teacherId, description, section } = req.body;
         
-        // Check if code already exists
-        const existing = await Subject.findOne({ code });
+        // Check if code already exists in this section
+        const existing = await Subject.findOne({ code: code.toUpperCase(), section: section || 'A' });
         if (existing) {
-            return res.status(400).json({ success: false, message: 'Subject code already exists' });
+            return res.status(400).json({ success: false, message: 'Subject code already exists for this section' });
         }
         
         const subject = await Subject.create({
@@ -58,7 +58,8 @@ router.post('/', authorize('admin'), async (req, res) => {
             department,
             semester,
             teacherId,
-            description
+            description,
+            section: section || 'A'
         });
         
         res.status(201).json({ success: true, data: subject });

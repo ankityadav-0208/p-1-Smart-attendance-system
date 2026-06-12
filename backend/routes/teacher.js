@@ -12,18 +12,94 @@ const { protect, authorize } = require('../middleware/auth');
 router.use(protect);
 router.use(authorize('teacher', 'admin'));
 
+// @desc    Get teacher dashboard overview stats
+// @route   GET /api/teacher/dashboard-overview
+router.get('/dashboard-overview', async (req, res) => {
+    try {
+        const subjects = await Subject.find({ teacherId: req.user.id }).sort('name');
+        
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        const endOfToday = new Date();
+        endOfToday.setHours(23, 59, 59, 999);
+        
+        const data = [];
+        
+        for (const subject of subjects) {
+            // 1. Total Students in the subject's section
+            const totalStudents = await User.countDocuments({ role: 'student', section: subject.section });
+            
+            // 2. Today's Attendance Session (check if active or finished today)
+            const todaySession = await AttendanceSession.findOne({
+                subjectId: subject._id,
+                startTime: { $gte: startOfToday, $lte: endOfToday }
+            });
+            
+            let todayPresentCount = 0;
+            let todayPercentage = 0;
+            if (todaySession) {
+                todayPresentCount = await AttendanceRecord.countDocuments({ sessionId: todaySession._id });
+                todayPercentage = totalStudents > 0 ? parseFloat(((todayPresentCount / totalStudents) * 100).toFixed(1)) : 0;
+            }
+            
+            // 3. Average Attendance (all completed sessions)
+            const completedSessions = await AttendanceSession.find({
+                subjectId: subject._id,
+                isActive: false
+            });
+            
+            let avgPercentage = 0;
+            if (completedSessions.length > 0) {
+                const completedSessionIds = completedSessions.map(s => s._id);
+                const totalCheckins = await AttendanceRecord.countDocuments({ sessionId: { $in: completedSessionIds } });
+                avgPercentage = totalStudents > 0 
+                    ? parseFloat(((totalCheckins / (totalStudents * completedSessions.length)) * 100).toFixed(1)) 
+                    : 0;
+            }
+            
+            data.push({
+                subjectId: subject._id,
+                name: subject.name,
+                code: subject.code,
+                department: subject.department,
+                semester: subject.semester,
+                section: subject.section,
+                totalStudents,
+                todayAttendance: {
+                    hasSession: !!todaySession,
+                    presentCount: todayPresentCount,
+                    percentage: todayPercentage
+                },
+                averageAttendance: avgPercentage
+            });
+        }
+        
+        res.json({
+            success: true,
+            data
+        });
+    } catch (error) {
+        console.error('Error fetching teacher dashboard overview:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
 // @desc    Start attendance session
 // @route   POST /api/teacher/start-session
 router.post('/start-session', async (req, res) => {
     try {
-        const { classroomLocation, allowedRadius, subjectId } = req.body;
+        const { classroomLocation, allowedRadius, subjectId, duration } = req.body;
+
+        const loc = classroomLocation || req.user.defaultLocation || { latitude: 29.171743, longitude: 75.735818 };
+        const rad = allowedRadius || req.user.defaultAllowedRadius || 1000;
+        const dur = duration || req.user.defaultSessionDuration || 5;
 
         const session = await AttendanceSession.create({
             createdBy: req.user.id,
             sessionToken: uuidv4(),
-            classroomLocation,
-            allowedRadius: allowedRadius || 1000,
-            expiresAt: new Date(Date.now() + 5 * 60000), // 5 minutes
+            classroomLocation: loc,
+            allowedRadius: rad,
+            expiresAt: new Date(Date.now() + dur * 60000), // duration in minutes
             subjectId: subjectId || null
         });
 

@@ -34,6 +34,12 @@ const UserSchema = new mongoose.Schema({
     department: { type: String, sparse: true },
     deviceId: { type: String, sparse: true },
     profilePhoto: { type: String, default: '' },
+    defaultSessionDuration: { type: Number, default: 5 },
+    defaultAllowedRadius: { type: Number, default: 1000 },
+    defaultLocation: {
+        latitude: { type: Number, default: 29.171743 },
+        longitude: { type: Number, default: 75.735818 }
+    },
     createdAt: { type: Date, default: Date.now },
     lastLogin: { type: Date }
 }, { timestamps: true });
