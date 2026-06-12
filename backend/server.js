@@ -11,6 +11,8 @@ const analyticsRoutes = require('./routes/analytics');
 // Load env vars
 dotenv.config();
 
+const SystemSettings = require('./models/SystemSettings');
+
 // Import routes
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
@@ -68,7 +70,18 @@ mongoose.connect(process.env.MONGODB_URI, {
     useUnifiedTopology: true,
     serverSelectionTimeoutMS: 5000,
 })
-.then(() => console.log('✅ MongoDB Connected'))
+.then(async () => {
+    console.log('✅ MongoDB Connected');
+    try {
+        const count = await SystemSettings.countDocuments();
+        if (count === 0) {
+            await SystemSettings.create({});
+            console.log('🌱 Seeded default system settings');
+        }
+    } catch (err) {
+        console.error('❌ Error seeding system settings:', err);
+    }
+})
 .catch(err => {
     console.error('❌ MongoDB Connection Error:', err);
     process.exit(1);

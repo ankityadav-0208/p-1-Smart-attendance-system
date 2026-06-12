@@ -3,6 +3,8 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const User = require('../models/User'); 
 const TeacherApproval = require('../models/TeacherApproval');
+const SystemSettings = require('../models/SystemSettings');
+const ActivityLog = require('../models/ActivityLog');
 const { generateToken, getDeviceId } = require('../middleware/auth');
 
 // @desc    Register student
@@ -37,6 +39,17 @@ router.post('/register/student', async (req, res) => {
         // Generate token
         const token = generateToken(user);
 
+        // Log registration
+        try {
+            await ActivityLog.create({
+                type: 'student_registered',
+                title: 'New student registered',
+                description: `${user.name} joined Section ${user.section || 'N/A'}`
+            });
+        } catch (logErr) {
+            console.error('Error logging student registration activity:', logErr);
+        }
+
         res.status(201).json({
             success: true,
             token,
@@ -65,8 +78,11 @@ router.post('/register/teacher', async (req, res) => {
     try {
         const { name, email, password, employeeId, department, verificationCode } = req.body;
 
+        // Fetch verification code from system settings
+        const settings = await SystemSettings.findOne() || { teacherVerificationCode: 'TEACH2024SECURE' };
+
         // Verify teacher code
-        if (verificationCode !== process.env.TEACHER_VERIFICATION_CODE) {
+        if (verificationCode !== settings.teacherVerificationCode) {
             return res.status(400).json({
                 success: false,
                 message: 'Invalid teacher verification code'
@@ -109,6 +125,17 @@ router.post('/register/teacher', async (req, res) => {
             email,
             status: 'pending'
         });
+
+        // Log teacher registration
+        try {
+            await ActivityLog.create({
+                type: 'teacher_registered',
+                title: 'New teacher registration',
+                description: `${user.name} requested approval for ${user.department || 'Faculty'}`
+            });
+        } catch (logErr) {
+            console.error('Error logging teacher registration activity:', logErr);
+        }
 
         res.status(201).json({
             success: true,
