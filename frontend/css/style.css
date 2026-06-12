@@ -1850,3 +1850,387 @@ body.dark-mode .student-list-footer {
     background: #3d3d4d;
     color: #e0e0e0;
 }
+
+/* ============ REDESIGNED SETTINGS & DASHBOARD ADDITIONS ============ */
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.settings-card {
+    background: var(--white);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    padding: 1.5rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid rgba(0,0,0,0.03);
+}
+
+.settings-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.settings-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--primary-dark);
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    padding-bottom: 0.75rem;
+}
+
+.settings-card-header i {
+    color: var(--primary);
+    font-size: 1.3rem;
+}
+
+.settings-card .form-group {
+    margin-bottom: 1rem;
+}
+
+.settings-card .form-group:last-child {
+    margin-bottom: 0;
+}
+
+.settings-card label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    color: var(--gray);
+}
+
+.settings-card input[type="text"],
+.settings-card input[type="number"],
+.settings-card input[type="password"],
+.settings-card select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #D4C9C0;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    background: var(--light);
+    color: var(--dark);
+    transition: border-color 0.2s;
+}
+
+.settings-card input:focus,
+.settings-card select:focus {
+    border-color: var(--primary);
+    outline: none;
+}
+
+/* Switches & Toggles */
+.toggle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px dashed rgba(0,0,0,0.05);
+}
+
+.toggle-row:last-child {
+    border-bottom: none;
+}
+
+.toggle-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.toggle-info span {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.toggle-info small {
+    font-size: 0.75rem;
+    color: var(--gray);
+    margin-top: 0.1rem;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 46px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: var(--primary);
+}
+
+input:checked + .slider:before {
+    transform: translateX(22px);
+}
+
+/* Danger Zone */
+.danger-zone {
+    border: 1px solid rgba(220, 53, 69, 0.2);
+    border-radius: var(--radius-md);
+    background: rgba(220, 53, 69, 0.02);
+    padding: 1.5rem;
+}
+
+.danger-zone-title {
+    color: var(--danger);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.danger-zone-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid rgba(220, 53, 69, 0.1);
+}
+
+.danger-zone-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.danger-zone-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.danger-zone-info h5 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--dark);
+}
+
+.danger-zone-info p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--gray);
+}
+
+/* Password Eye Container */
+.password-input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.password-input-container input {
+    padding-right: 2.5rem;
+}
+
+.toggle-password-btn {
+    position: absolute;
+    right: 0.75rem;
+    background: none;
+    border: none;
+    color: var(--gray);
+    cursor: pointer;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toggle-password-btn:hover {
+    color: var(--primary);
+}
+
+/* Recent Activity List */
+.activity-feed-card {
+    background: var(--white);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    padding: 1.5rem;
+    width: 100%;
+}
+
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.activity-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: var(--radius-sm);
+    background: var(--light);
+    border-left: 4px solid var(--primary);
+    transition: transform 0.2s;
+}
+
+.activity-item:hover {
+    transform: translateX(4px);
+}
+
+.activity-item.student_registered { border-left-color: var(--info); }
+.activity-item.teacher_registered { border-left-color: var(--warning); }
+.activity-item.teacher_approved { border-left-color: var(--success); }
+.activity-item.session_started { border-left-color: var(--primary); }
+.activity-item.session_ended { border-left-color: var(--gray); }
+.activity-item.settings_updated { border-left-color: var(--accent); }
+.activity-item.user_disabled { border-left-color: var(--danger); }
+
+.activity-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: white;
+    color: var(--primary);
+    box-shadow: var(--shadow-sm);
+    flex-shrink: 0;
+}
+
+.student_registered .activity-icon { color: var(--info); }
+.teacher_registered .activity-icon { color: var(--warning); }
+.teacher_approved .activity-icon { color: var(--success); }
+.session_started .activity-icon { color: var(--primary); }
+.session_ended .activity-icon { color: var(--gray); }
+.settings_updated .activity-icon { color: var(--accent); }
+.user_disabled .activity-icon { color: var(--danger); }
+
+.activity-details {
+    flex-grow: 1;
+}
+
+.activity-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--dark);
+}
+
+.activity-desc {
+    font-size: 0.75rem;
+    color: var(--gray);
+    margin-top: 0.1rem;
+}
+
+.activity-time {
+    font-size: 0.7rem;
+    color: var(--gray);
+    margin-top: 0.25rem;
+    text-align: right;
+}
+
+/* Charts Grid */
+.charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    width: 100%;
+}
+
+@media (max-width: 992px) {
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.chart-card {
+    background: var(--white);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.chart-card h3 {
+    margin-bottom: 1rem;
+    color: var(--primary-dark);
+    font-size: 1.1rem;
+    width: 100%;
+    text-align: left;
+}
+
+.chart-container {
+    position: relative;
+    width: 100%;
+    height: 240px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Dark Mode Extensions */
+body.dark-mode .settings-card,
+body.dark-mode .activity-feed-card,
+body.dark-mode .chart-card {
+    background: #232334;
+    border-color: rgba(255,255,255,0.05);
+}
+
+body.dark-mode .settings-card input,
+body.dark-mode .settings-card select {
+    background: #1e1e2d;
+    border-color: #404050;
+    color: #e0e0e0;
+}
+
+body.dark-mode .toggle-info span,
+body.dark-mode .danger-zone-info h5,
+body.dark-mode .activity-title {
+    color: #e0e0e0;
+}
+
+body.dark-mode .activity-item {
+    background: #1e1e2d;
+}
+
+body.dark-mode .activity-icon {
+    background: #2d2d3d;
+}

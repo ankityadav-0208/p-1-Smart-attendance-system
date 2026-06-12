@@ -286,52 +286,6 @@ router.get('/subject-attendance', async (req, res) => {
     }
 });
 
-// Alias route - frontend incorrectly calls this endpoint name
-// Redirects to the correct mark-attendance handler
-router.post('/mark-attendance-without-selfie', async (req, res) => {
-    try {
-        const { sessionId, location, distance } = req.body;
 
-        if (!sessionId) {
-            return res.status(400).json({ success: false, message: 'Session ID is required' });
-        }
-
-        const session = await AttendanceSession.findById(sessionId);
-        if (!session || !session.isActive) {
-            return res.status(400).json({ success: false, message: 'Invalid or inactive session' });
-        }
-
-        const existing = await AttendanceRecord.findOne({
-            studentId: req.user.id,
-            sessionId: session._id
-        });
-        if (existing) {
-            return res.status(400).json({ success: false, message: 'Attendance already marked for this session' });
-        }
-
-        if (distance > session.allowedRadius) {
-            return res.status(400).json({
-                success: false,
-                message: `You are ${Math.round(distance)} meters away. Maximum allowed distance is ${session.allowedRadius} meters.`
-            });
-        }
-
-        const record = await AttendanceRecord.create({
-            studentId: req.user.id,
-            sessionId: session._id,
-            subjectId: session.subjectId,
-            location: location ? { ...location, distance } : null,
-            deviceId: getDeviceId(req),
-            ipAddress: req.ip,
-            userAgent: req.get('user-agent')
-        });
-
-        res.json({ success: true, message: 'Attendance marked successfully', data: record });
-
-    } catch (error) {
-        console.error('Error in mark-attendance-without-selfie:', error);
-        res.status(500).json({ success: false, message: error.message || 'Server error' });
-    }
-});
 
 module.exports = router;

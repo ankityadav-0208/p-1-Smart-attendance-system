@@ -35,6 +35,9 @@
                 <a href="#" onclick="showSection('subjects')">
                     <i class="fas fa-book"></i> Subjects
                 </a>
+                <a href="#" onclick="showSection('attendance')">
+                    <i class="fas fa-calendar-check"></i> Attendance Records
+                </a>
                 <a href="#" onclick="showSection('settings')">
                     <i class="fas fa-cog"></i> Settings
                 </a>
@@ -91,10 +94,29 @@
                     
                 </div>
 
-                <div class="chart-container glass-effect">
-                    <h3>System Overview</h3>
-                    <div style="height: 350px; width: 100%; position: relative; margin-top: 20px;">
-                        <canvas id="adminChart" style="display: block; width: 100%; height: 100%;"></canvas>
+                <!-- Redesigned Overview with Charts Grid & Activity Feed -->
+                <div class="charts-grid">
+                    <!-- User Distribution Chart -->
+                    <div class="chart-card shadow-sm">
+                        <h3>User Distribution</h3>
+                        <div class="chart-container">
+                            <canvas id="userDistChart"></canvas>
+                        </div>
+                    </div>
+                    <!-- Weekly Attendance Chart -->
+                    <div class="chart-card shadow-sm">
+                        <h3>Attendance Activity This Week</h3>
+                        <div class="chart-container">
+                            <canvas id="weeklyAttChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity Feed -->
+                <div class="activity-feed-card shadow-sm">
+                    <h3>Recent System Activity</h3>
+                    <div class="activity-list" id="activityList">
+                        <div class="text-center">Loading activity logs...</div>
                     </div>
                 </div>
             </div>
@@ -239,35 +261,216 @@
                 </div>
             </div>
 
-            <!-- Reports Section
-            <div id="reportsSection" class="section">
-                <h3>System Reports</h3>
-                <div class="reports-controls">
-                    <select id="reportMonth">
-                        <option value="1">January</option>
-                        <option value="2">February</option>
-                        <option value="3">March</option>
-                        <option value="4">April</option>
-                        <option value="5">May</option>
-                        <option value="6">June</option>
-                        <option value="7">July</option>
-                        <option value="8">August</option>
-                        <option value="9">September</option>
-                        <option value="10">October</option>
-                        <option value="11">November</option>
-                        <option value="12">December</option>
+            <!-- Attendance Section -->
+            <div id="attendanceSection" class="section">
+                <h3>Attendance Records</h3>
+                
+                <div class="filters" style="margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap;">
+                    <input type="date" id="adminAttendanceDateFilter" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #ddd;">
+                    <select id="adminAttendanceSubjectFilter" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #ddd;">
+                        <option value="all">All Subjects</option>
                     </select>
-                    <button class="btn btn-primary" onclick="generateReport()">
-                        <i class="fas fa-file-pdf"></i> Generate Report
+                    <select id="adminAttendanceSectionFilter" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #ddd;">
+                        <option value="all">All Sections</option>
+                        <option value="A">Section A</option>
+                        <option value="B">Section B</option>
+                        <option value="C">Section C</option>
+                    </select>
+                    <button class="btn btn-outline" onclick="loadAdminAttendanceRecords()">
+                        <i class="fas fa-filter"></i> Filter
                     </button>
-                    <button class="btn btn-success" onclick="downloadCSV()">
-                        <i class="fas fa-download"></i> Download CSV
+                    <button class="btn btn-outline" onclick="clearAdminAttendanceFilters()">
+                        <i class="fas fa-times"></i> Clear
                     </button>
                 </div>
-                <div class="chart-container">
-                    <canvas id="reportChart"></canvas>
+                
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Student</th>
+                                <th>Roll No</th>
+                                <th>Section</th>
+                                <th>Subject</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminAttendanceTableBody">
+                            <!-- Filled dynamically -->
+                        </tbody>
+                    </table>
                 </div>
-            </div> -->
+            </div>
+
+            <!-- Settings Section -->
+            <div id="settingsSection" class="section">
+                <h3>Settings Panel</h3>
+                
+                <div class="settings-grid">
+                    <!-- Profile Card -->
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <i class="fas fa-user-circle"></i> Profile Info
+                        </div>
+                        <div class="form-group">
+                            <label>Name</label>
+                            <input type="text" id="adminSettingsName" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="adminSettingsEmail" readonly>
+                        </div>
+                    </div>
+                    
+                    <!-- Change Password Card -->
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <i class="fas fa-key"></i> Change Password
+                        </div>
+                        <div class="form-group">
+                            <label>Current Password</label>
+                            <div class="password-input-container">
+                                <input type="password" id="currentPassword" placeholder="Enter current password">
+                                <button class="toggle-password-btn" onclick="togglePasswordVisibility('currentPassword')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>New Password</label>
+                            <div class="password-input-container">
+                                <input type="password" id="newPassword" placeholder="Minimum 6 characters">
+                                <button class="toggle-password-btn" onclick="togglePasswordVisibility('newPassword')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-full" onclick="updateAdminPassword()">
+                            Update Password
+                        </button>
+                    </div>
+
+                    <!-- System Configuration Card -->
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <i class="fas fa-sliders-h"></i> System Settings
+                        </div>
+                        <div class="form-group">
+                            <label>Max Allowed Radius (meters)</label>
+                            <input type="number" id="maxAllowedRadius" min="5" max="5000">
+                        </div>
+                        <div class="form-group">
+                            <label>Session Duration (minutes)</label>
+                            <input type="number" id="sessionDuration" min="1" max="120">
+                        </div>
+                        <div class="form-group">
+                            <label>QR Refresh Interval (seconds)</label>
+                            <input type="number" id="qrRefreshInterval" min="2" max="60">
+                        </div>
+                        <div class="form-group">
+                            <label>Min Attendance Alert Threshold (%)</label>
+                            <input type="number" id="minAttendanceAlert" min="0" max="100">
+                        </div>
+                        <button class="btn btn-primary btn-full" onclick="saveSystemSettings()">
+                            Save Settings
+                        </button>
+                    </div>
+
+                    <!-- Access Codes Card -->
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <i class="fas fa-shield-alt"></i> Access & Security
+                        </div>
+                        <div class="form-group">
+                            <label>Teacher Verification Code</label>
+                            <div class="password-input-container">
+                                <input type="password" id="teacherVerificationCode">
+                                <button class="toggle-password-btn" onclick="togglePasswordVisibility('teacherVerificationCode')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Master Admin Code</label>
+                            <div class="password-input-container">
+                                <input type="password" id="masterAdminCode">
+                                <button class="toggle-password-btn" onclick="togglePasswordVisibility('masterAdminCode')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-full" onclick="saveAccessCodes()">
+                            Save Codes
+                        </button>
+                    </div>
+
+                    <!-- Notifications Preference Card -->
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <i class="fas fa-bell"></i> Preferences
+                        </div>
+                        <div class="toggle-row">
+                            <div class="toggle-info">
+                                <span>Low Attendance Alerts</span>
+                                <small>Notify admin when student attendance drops below threshold</small>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="lowAttendanceAlerts">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="toggle-row">
+                            <div class="toggle-info">
+                                <span>New Teacher Alerts</span>
+                                <small>Notify admin when a new teacher registers</small>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="newTeacherRegistration">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="toggle-row">
+                            <div class="toggle-info">
+                                <span>Weekly Reports</span>
+                                <small>Generate automatic weekly CSV reports</small>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="sessionReports">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <button class="btn btn-primary btn-full" style="margin-top: 15px;" onclick="saveNotificationSettings()">
+                            Save Preferences
+                        </button>
+                    </div>
+
+                    <!-- Danger Zone Card -->
+                    <div class="settings-card danger-zone">
+                        <div class="danger-zone-title">
+                            <i class="fas fa-exclamation-triangle"></i> Danger Zone
+                        </div>
+                        <div class="danger-zone-item">
+                            <div class="danger-zone-info">
+                                <h5>Clear Attendance Data</h5>
+                                <p>Purge all sessions and check-in logs permanently.</p>
+                            </div>
+                            <button class="btn btn-danger btn-sm" onclick="confirmClearSessions()">
+                                Clear
+                            </button>
+                        </div>
+                        <div class="danger-zone-item">
+                            <div class="danger-zone-info">
+                                <h5>Remove All Students</h5>
+                                <p>Permanently delete all student accounts from database.</p>
+                            </div>
+                            <button class="btn btn-danger btn-sm" onclick="confirmRemoveStudents()">
+                                Purge
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

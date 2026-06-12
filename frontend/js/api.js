@@ -113,16 +113,11 @@ const API = {
                 body: JSON.stringify({ sessionId, token })
             }),
         
-        markAttendance: (sessionId, location, selfieFile) => {
-            const formData = new FormData();
-            formData.append('data', JSON.stringify({ sessionId, location }));
-            formData.append('selfie', selfieFile);
-            
-            return API.request('/student/mark-attendance', {
+        markAttendance: (sessionId, location, distance) =>
+            API.request('/student/mark-attendance', {
                 method: 'POST',
-                body: formData
-            });
-        },
+                body: JSON.stringify({ sessionId, location, distance })
+            }),
         
         getHistory: () =>
             API.request('/student/history'),

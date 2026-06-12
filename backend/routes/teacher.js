@@ -5,6 +5,7 @@ const User = require('../models/User');
 const AttendanceSession = require('../models/AttendanceSession');
 const AttendanceRecord = require('../models/AttendanceRecord');
 const Subject = require('../models/Subject');
+const ActivityLog = require('../models/ActivityLog');
 const { protect, authorize } = require('../middleware/auth');
 
 // All routes require teacher or admin role
@@ -25,6 +26,19 @@ router.post('/start-session', async (req, res) => {
             expiresAt: new Date(Date.now() + 5 * 60000), // 5 minutes
             subjectId: subjectId || null
         });
+
+        // Log session start in ActivityLog
+        try {
+            const subject = subjectId ? await Subject.findById(subjectId) : null;
+            const subjectName = subject ? `${subject.name} (${subject.code})` : 'General';
+            await ActivityLog.create({
+                type: 'session_started',
+                title: 'Attendance Session Started',
+                description: `${req.user.name} started a session for ${subjectName}`
+            });
+        } catch (logErr) {
+            console.error('Error logging session start:', logErr);
+        }
 
         res.json({
             success: true,
@@ -68,6 +82,19 @@ router.put('/stop-session/:id', async (req, res) => {
         session.isActive = false;
         session.endTime = Date.now();
         await session.save();
+
+        // Log session stop in ActivityLog
+        try {
+            const subject = session.subjectId ? await Subject.findById(session.subjectId) : null;
+            const subjectName = subject ? `${subject.name} (${subject.code})` : 'General';
+            await ActivityLog.create({
+                type: 'session_ended',
+                title: 'Attendance Session Ended',
+                description: `${req.user.name} ended the session for ${subjectName}`
+            });
+        } catch (logErr) {
+            console.error('Error logging session stop:', logErr);
+        }
 
         res.json({
             success: true,
@@ -142,7 +169,7 @@ router.get('/active-sessions', async (req, res) => {
 // @route   GET /api/teacher/attendance-records
 router.get('/attendance-records', async (req, res) => {
     try {
-        const { sessionId, startDate, endDate } = req.query;
+        const { sessionId, startDate, endDate, subjectId } = req.query;
 
         let query = {};
         
@@ -157,9 +184,26 @@ router.get('/attendance-records', async (req, res) => {
             };
         }
 
+        if (req.user.role !== 'admin') {
+            const allottedSubjects = await Subject.find({ teacherId: req.user.id });
+            const subjectIds = allottedSubjects.map(sub => sub._id);
+            if (subjectId) {
+                if (subjectIds.map(id => id.toString()).includes(subjectId.toString())) {
+                    query.subjectId = subjectId;
+                } else {
+                    query.subjectId = null;
+                }
+            } else {
+                query.subjectId = { $in: subjectIds };
+            }
+        } else if (subjectId) {
+            query.subjectId = subjectId;
+        }
+
         const records = await AttendanceRecord.find(query)
             .populate('studentId', 'name rollNumber section')
             .populate('sessionId', 'startTime createdBy')
+            .populate('subjectId', 'name code')
             .sort('-timestamp');
 
         res.json({
@@ -309,8 +353,19 @@ router.get('/session-attendance', async (req, res) => {
         const allStudents = await User.find({ role: 'student' }).select('_id name rollNumber section');
         const totalStudentsCount = allStudents.length;
         
-        // Build query for attendance records
-        let recordQuery = {};
+        // Get sessions created by this teacher (or all if admin)
+        let sessionQuery = {};
+        if (req.user.role !== 'admin') {
+            sessionQuery.createdBy = req.user.id;
+        }
+        if (subjectId) {
+            sessionQuery.subjectId = subjectId;
+        }
+        const sessionsList = await AttendanceSession.find(sessionQuery);
+        const sessionIds = sessionsList.map(s => s._id);
+
+        // Build query for attendance records scoped to these sessions
+        let recordQuery = { sessionId: { $in: sessionIds } };
         if (startDate && endDate) {
             recordQuery.timestamp = {
                 $gte: new Date(startDate),

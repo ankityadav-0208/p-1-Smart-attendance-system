@@ -202,6 +202,8 @@ router.put('/disable-user/:id', async (req, res) => {
             message: 'Server error'
         });
     }
+});
+
 // @desc    Get admin settings
 // @route   GET /api/admin/settings
 router.get('/settings', async (req, res) => {
@@ -356,4 +358,3 @@ router.post('/remove-students', async (req, res) => {
 });
 
 module.exports = router;
-});

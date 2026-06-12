@@ -1,7 +1,9 @@
 // Admin Dashboard Functions
 
-// Store chart instance globally
+// Store chart instances globally
 let adminChart = null;
+let userDistChart = null;
+let weeklyAttChart = null;
 
 // ✅ Define API.baseURL here
 
@@ -38,6 +40,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('Admin dashboard loading...');
     await loadAdminData();
     await loadDashboardStats();
+    await loadRecentActivity();
     await loadPendingApprovals();
     await loadTeachers();
     await loadStudents();
@@ -88,15 +91,22 @@ function showSection(section) {
         students: 'Student Management',
         approvals: 'Pending Approvals',
         subjects: 'Subject Management',
+        attendance: 'Attendance Records',
         settings: 'Settings'
     };
     document.getElementById('pageTitle').textContent = titles[section] || 'Overview';
     
     // Load section-specific data
+    if (section === 'overview') {
+        loadDashboardStats();
+        loadRecentActivity();
+    }
     if (section === 'subjects') loadSubjects();
     if (section === 'teachers') loadTeachers();
     if (section === 'students') loadStudents();
     if (section === 'approvals') loadPendingApprovals();
+    if (section === 'attendance') loadAdminAttendanceRecords();
+    if (section === 'settings') loadSettings();
 }
 
 // Load dashboard statistics - Using API
@@ -122,89 +132,125 @@ async function loadDashboardStats() {
     }
 }
 
-// Load admin chart
-function loadAdminChart(stats) {
-    console.log('Loading admin chart...');
+// Load admin charts (Doughnut & Line)
+async function loadAdminChart(stats) {
+    console.log('Loading admin charts...');
     
-    const canvas = document.getElementById('adminChart');
-    if (!canvas) {
-        console.error('Canvas element not found!');
-        return;
-    }
-    
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-        console.error('Could not get canvas context');
-        return;
-    }
-    
-    const teachers = stats ? (stats.teachers || 0) : (parseInt(document.getElementById('totalTeachers')?.textContent) || 0);
-    const students = stats ? (stats.students || 0) : (parseInt(document.getElementById('totalStudents')?.textContent) || 0);
-    const pending = stats ? (stats.pending || 0) : (parseInt(document.getElementById('pendingApprovals')?.textContent) || 0);
-    const sessions = stats ? (stats.sessions || 0) : (parseInt(document.getElementById('totalSessions')?.textContent) || 0);
-    
-    console.log('Chart data:', { teachers, students, pending, sessions });
-    
-    if (adminChart) {
-        adminChart.destroy();
-        adminChart = null;
-    }
-    
-    try {
-        adminChart = new Chart(ctx, {
-            type: 'bar',
+    // 1. User Distribution Chart (Doughnut)
+    const distCanvas = document.getElementById('userDistChart');
+    if (distCanvas) {
+        const distCtx = distCanvas.getContext('2d');
+        const teachers = stats ? (stats.teachers || 0) : 0;
+        const students = stats ? (stats.students || 0) : 0;
+        const pending = stats ? (stats.pending || 0) : 0;
+        
+        if (userDistChart) {
+            userDistChart.destroy();
+        }
+        
+        userDistChart = new Chart(distCtx, {
+            type: 'doughnut',
             data: {
-                labels: ['Teachers', 'Students', 'Pending', 'Sessions'],
+                labels: ['Teachers', 'Students', 'Pending Approvals'],
                 datasets: [{
-                    label: 'Count',
-                    data: [teachers, students, pending, sessions],
+                    data: [teachers, students, pending],
                     backgroundColor: [
-                        'rgba(74, 144, 226, 0.8)',
-                        'rgba(40, 167, 69, 0.8)',
-                        'rgba(255, 193, 7, 0.8)',
-                        'rgba(220, 53, 69, 0.8)'
+                        '#8B5A3C', // Primary
+                        '#D4A373', // Secondary
+                        '#E9C46A'  // Accent
                     ],
-                    borderColor: ['#4a90e2', '#28a745', '#ffc107', '#dc3545'],
-                    borderWidth: 2,
-                    borderRadius: 5,
-                    barPercentage: 0.7
+                    borderColor: '#ffffff',
+                    borderWidth: 2
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: { duration: 0 },
                 plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        enabled: true,
-                        callbacks: {
-                            label: function(context) {
-                                return `Count: ${context.raw}`;
-                            }
-                        }
+                    legend: {
+                        position: 'bottom',
+                        labels: { boxWidth: 12, font: { family: 'Inter', size: 11 } }
                     }
+                }
+            }
+        });
+    }
+    
+    // 2. Weekly Attendance Activity Chart (Line)
+    const lineCanvas = document.getElementById('weeklyAttChart');
+    if (lineCanvas) {
+        const lineCtx = lineCanvas.getContext('2d');
+        
+        // Let's populate last 7 days with counts
+        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const last7DaysLabels = [];
+        const last7DaysData = [0, 0, 0, 0, 0, 0, 0];
+        
+        // Generate daily labels
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            last7DaysLabels.push(daysOfWeek[d.getDay()]);
+        }
+        
+        try {
+            // Fetch records from last 7 days to calculate counts
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            
+            const response = await apiRequest(`/teacher/attendance-records?startDate=${sevenDaysAgo.toISOString()}&endDate=${new Date().toISOString()}`);
+            const records = response.data || [];
+            
+            records.forEach(record => {
+                const recDate = new Date(record.timestamp);
+                const diffTime = Math.abs(new Date() - recDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) - 1;
+                if (diffDays >= 0 && diffDays < 7) {
+                    // Index from the end (since 0 diffDays is today, which is last element in last7DaysData)
+                    last7DaysData[6 - diffDays]++;
+                }
+            });
+        } catch (err) {
+            console.error('Error fetching weekly chart records:', err);
+        }
+        
+        if (weeklyAttChart) {
+            weeklyAttChart.destroy();
+        }
+        
+        weeklyAttChart = new Chart(lineCtx, {
+            type: 'line',
+            data: {
+                labels: last7DaysLabels,
+                datasets: [{
+                    label: 'Check-ins',
+                    data: last7DaysData,
+                    borderColor: '#8B5A3C',
+                    backgroundColor: 'rgba(139, 90, 60, 0.05)',
+                    fill: true,
+                    tension: 0.3,
+                    borderWidth: 3,
+                    pointBackgroundColor: '#8B5A3C',
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
                 },
                 scales: {
                     y: {
                         beginAtZero: true,
-                        grid: { color: 'rgba(0, 0, 0, 0.1)', drawBorder: true },
-                        ticks: { stepSize: 1, precision: 0, font: { size: 12 } }
+                        ticks: { stepSize: 1, precision: 0 }
                     },
                     x: {
-                        grid: { display: false },
-                        ticks: { font: { size: 12, weight: 'bold' } }
+                        grid: { display: false }
                     }
-                },
-                layout: { padding: { top: 20, bottom: 20 } }
+                }
             }
         });
-        
-        console.log('Chart created successfully');
-        
-    } catch (error) {
-        console.error('Error creating chart:', error);
-        showToast('Error loading chart', 'error');
     }
 }
 
@@ -625,6 +671,336 @@ function hideLoading() {
     }
 }
 
+// Recent Activity Feed Functions
+async function loadRecentActivity() {
+    try {
+        const activityContainer = document.getElementById('activityList');
+        if (!activityContainer) return;
+        
+        const response = await apiRequest('/admin/activity');
+        const logs = response.data || [];
+        
+        if (logs.length === 0) {
+            activityContainer.innerHTML = '<div class="text-center">No recent activity logs.</div>';
+            return;
+        }
+        
+        const icons = {
+            student_registered: 'fas fa-user-plus',
+            teacher_registered: 'fas fa-id-badge',
+            teacher_approved: 'fas fa-check-circle',
+            session_started: 'fas fa-play-circle',
+            session_ended: 'fas fa-stop-circle',
+            settings_updated: 'fas fa-cog',
+            user_disabled: 'fas fa-ban'
+        };
+        
+        activityContainer.innerHTML = '';
+        logs.forEach(log => {
+            const timeStr = new Date(log.timestamp).toLocaleString();
+            const logClass = log.type || 'settings_updated';
+            const iconClass = icons[log.type] || 'fas fa-info-circle';
+            
+            const activityItem = document.createElement('div');
+            activityItem.className = `activity-item ${logClass}`;
+            activityItem.innerHTML = `
+                <div class="activity-icon">
+                    <i class="${iconClass}"></i>
+                </div>
+                <div class="activity-details">
+                    <div class="activity-title">${log.title || 'System Log'}</div>
+                    <div class="activity-desc">${log.description || ''}</div>
+                    <div class="activity-time">${timeStr}</div>
+                </div>
+            `;
+            activityContainer.appendChild(activityItem);
+        });
+    } catch (error) {
+        console.error('Error loading activity logs:', error);
+    }
+}
+
+// Settings Loading and Management
+async function loadSettings() {
+    try {
+        const user = JSON.parse(sessionStorage.getItem('currentUser'));
+        if (user) {
+            document.getElementById('adminSettingsName').value = user.name || '';
+            document.getElementById('adminSettingsEmail').value = user.email || '';
+        }
+        
+        const response = await apiRequest('/admin/settings');
+        const settings = response.data;
+        if (!settings) return;
+        
+        document.getElementById('maxAllowedRadius').value = settings.maxAllowedRadius || 1000;
+        document.getElementById('sessionDuration').value = settings.sessionDuration || 5;
+        document.getElementById('qrRefreshInterval').value = settings.qrRefreshInterval || 10;
+        document.getElementById('minAttendanceAlert').value = settings.minAttendanceAlert || 75;
+        
+        document.getElementById('lowAttendanceAlerts').checked = settings.lowAttendanceAlerts !== false;
+        document.getElementById('newTeacherRegistration').checked = settings.newTeacherRegistration !== false;
+        document.getElementById('sessionReports').checked = settings.sessionReports === true;
+        
+        document.getElementById('teacherVerificationCode').value = settings.teacherVerificationCode || 'TEACH2024SECURE';
+        document.getElementById('masterAdminCode').value = settings.masterAdminCode || 'SUPER_ADMIN_2024';
+        
+    } catch (error) {
+        console.error('Error loading settings:', error);
+        showToast('Error loading settings', 'error');
+    }
+}
+
+async function saveSystemSettings() {
+    try {
+        showLoading();
+        const maxAllowedRadius = parseInt(document.getElementById('maxAllowedRadius').value);
+        const sessionDuration = parseInt(document.getElementById('sessionDuration').value);
+        const qrRefreshInterval = parseInt(document.getElementById('qrRefreshInterval').value);
+        const minAttendanceAlert = parseInt(document.getElementById('minAttendanceAlert').value);
+        
+        await apiRequest('/admin/settings', {
+            method: 'PUT',
+            body: JSON.stringify({ maxAllowedRadius, sessionDuration, qrRefreshInterval, minAttendanceAlert })
+        });
+        
+        showToast('System settings saved successfully!', 'success');
+        await loadSettings();
+        await loadRecentActivity();
+    } catch (error) {
+        console.error('Error saving system settings:', error);
+        showToast('Error saving settings: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function saveAccessCodes() {
+    try {
+        showLoading();
+        const teacherVerificationCode = document.getElementById('teacherVerificationCode').value;
+        const masterAdminCode = document.getElementById('masterAdminCode').value;
+        
+        await apiRequest('/admin/access-codes', {
+            method: 'PUT',
+            body: JSON.stringify({ teacherVerificationCode, masterAdminCode })
+        });
+        
+        showToast('Access codes updated successfully!', 'success');
+        await loadSettings();
+        await loadRecentActivity();
+    } catch (error) {
+        console.error('Error saving access codes:', error);
+        showToast('Error saving access codes: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function saveNotificationSettings() {
+    try {
+        showLoading();
+        const lowAttendanceAlerts = document.getElementById('lowAttendanceAlerts').checked;
+        const newTeacherRegistration = document.getElementById('newTeacherRegistration').checked;
+        const sessionReports = document.getElementById('sessionReports').checked;
+        
+        await apiRequest('/admin/notifications', {
+            method: 'PUT',
+            body: JSON.stringify({ lowAttendanceAlerts, newTeacherRegistration, sessionReports })
+        });
+        
+        showToast('Notification preferences saved!', 'success');
+        await loadSettings();
+    } catch (error) {
+        console.error('Error saving notification preferences:', error);
+        showToast('Error saving notification preferences', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function updateAdminPassword() {
+    try {
+        const currentPassword = document.getElementById('currentPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        
+        if (!currentPassword || !newPassword) {
+            showToast('Please enter both current and new passwords', 'error');
+            return;
+        }
+        if (newPassword.length < 6) {
+            showToast('New password must be at least 6 characters', 'error');
+            return;
+        }
+        
+        showLoading();
+        await apiRequest('/users/change-password', {
+            method: 'POST',
+            body: JSON.stringify({ currentPassword, newPassword })
+        });
+        
+        showToast('Password updated successfully!', 'success');
+        document.getElementById('currentPassword').value = '';
+        document.getElementById('newPassword').value = '';
+    } catch (error) {
+        console.error('Error updating password:', error);
+        showToast('Error updating password: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function togglePasswordVisibility(id) {
+    const input = document.getElementById(id);
+    const btnIcon = input.nextElementSibling.querySelector('i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        btnIcon.className = 'fas fa-eye-slash';
+    } else {
+        input.type = 'password';
+        btnIcon.className = 'fas fa-eye';
+    }
+}
+
+// Danger Zone Confirmations
+async function confirmClearSessions() {
+    const confirmPhrase = 'DELETE SESSIONS';
+    const check = prompt(`WARNING: This will purge all attendance sessions and check-in logs permanently!\nTo confirm, type: "${confirmPhrase}"`);
+    if (check !== confirmPhrase) {
+        showToast('Operation cancelled. Input did not match.', 'info');
+        return;
+    }
+    
+    try {
+        showLoading();
+        await apiRequest('/admin/clear-sessions', { method: 'POST' });
+        showToast('All attendance sessions and records cleared.', 'success');
+        await loadDashboardStats();
+        await loadRecentActivity();
+    } catch (error) {
+        console.error('Error clearing sessions:', error);
+        showToast('Error clearing sessions', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function confirmRemoveStudents() {
+    const confirmPhrase = 'PURGE STUDENTS';
+    const check = prompt(`CRITICAL WARNING: This will permanently delete all student accounts from the system!\nTo confirm, type: "${confirmPhrase}"`);
+    if (check !== confirmPhrase) {
+        showToast('Operation cancelled. Input did not match.', 'info');
+        return;
+    }
+    
+    try {
+        showLoading();
+        await apiRequest('/admin/remove-students', { method: 'POST' });
+        showToast('All student accounts permanently purged.', 'success');
+        await loadStudents();
+        await loadDashboardStats();
+        await loadRecentActivity();
+    } catch (error) {
+        console.error('Error purging students:', error);
+        showToast('Error purging students', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Attendance Records Rendering
+let adminSubjectsMap = new Map();
+async function loadAdminAttendanceRecords() {
+    const tbody = document.getElementById('adminAttendanceTableBody');
+    const subjectFilter = document.getElementById('adminAttendanceSubjectFilter');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Loading records...</td></tr>';
+    
+    try {
+        if (subjectFilter.options.length <= 1) {
+            const subRes = await apiRequest('/teacher/subjects');
+            const subjects = subRes.data || [];
+            subjects.forEach(sub => {
+                adminSubjectsMap.set(sub._id.toString(), sub);
+                const opt = document.createElement('option');
+                opt.value = sub._id;
+                opt.textContent = `${sub.name} (${sub.code})`;
+                subjectFilter.appendChild(opt);
+            });
+        }
+        
+        const dateVal = document.getElementById('adminAttendanceDateFilter').value;
+        const subVal = subjectFilter.value;
+        const secVal = document.getElementById('adminAttendanceSectionFilter').value;
+        
+        const params = {};
+        if (dateVal) {
+            const start = new Date(dateVal);
+            start.setHours(0,0,0,0);
+            const end = new Date(dateVal);
+            end.setHours(23,59,59,999);
+            params.startDate = start.toISOString();
+            params.endDate = end.toISOString();
+        }
+        if (subVal && subVal !== 'all') {
+            params.subjectId = subVal;
+        }
+        
+        const recRes = await apiRequest('/teacher/attendance-records', {
+            method: 'GET'
+        });
+        let records = recRes.data || [];
+        
+        if (secVal && secVal !== 'all') {
+            records = records.filter(r => r.studentId?.section === secVal);
+        }
+        if (subVal && subVal !== 'all') {
+            records = records.filter(r => (r.subjectId?._id === subVal || r.subjectId === subVal));
+        }
+        if (dateVal) {
+            const filterDateStr = new Date(dateVal).toDateString();
+            records = records.filter(r => new Date(r.timestamp).toDateString() === filterDateStr);
+        }
+        
+        if (records.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No attendance records found.</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        records.forEach(rec => {
+            const dateStr = new Date(rec.timestamp).toLocaleDateString();
+            const timeStr = new Date(rec.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const studentName = rec.studentId?.name || 'Unknown';
+            const rollNo = rec.studentId?.rollNumber || 'N/A';
+            const section = rec.studentId?.section || 'N/A';
+            const subjectName = rec.subjectId?.name ? `${rec.subjectId.name} (${rec.subjectId.code || ''})` : 'General';
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${dateStr} ${timeStr}</td>
+                <td>${studentName}</td>
+                <td>${rollNo}</td>
+                <td>${section}</td>
+                <td>${subjectName}</td>
+                <td><span class="status-badge status-present">✓ Present</span></td>
+            `;
+            tbody.appendChild(row);
+        });
+    } catch (error) {
+        console.error('Error loading admin attendance records:', error);
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: red;">Error loading records.</td></tr>';
+    }
+}
+
+async function clearAdminAttendanceFilters() {
+    document.getElementById('adminAttendanceDateFilter').value = '';
+    document.getElementById('adminAttendanceSubjectFilter').value = 'all';
+    document.getElementById('adminAttendanceSectionFilter').value = 'all';
+    await loadAdminAttendanceRecords();
+}
+
 // Export functions
 window.showSection = showSection;
 window.filterStudents = filterStudents;
@@ -632,6 +1008,15 @@ window.approveTeacher = approveTeacher;
 window.rejectTeacher = rejectTeacher;
 window.disableTeacher = disableTeacher;
 window.disableStudent = disableStudent;
-// window.generateReport = generateReport;
-// window.downloadCSV = downloadCSV;
 window.toggleDarkMode = toggleDarkMode;
+window.loadRecentActivity = loadRecentActivity;
+window.loadSettings = loadSettings;
+window.saveSystemSettings = saveSystemSettings;
+window.saveAccessCodes = saveAccessCodes;
+window.saveNotificationSettings = saveNotificationSettings;
+window.updateAdminPassword = updateAdminPassword;
+window.togglePasswordVisibility = togglePasswordVisibility;
+window.confirmClearSessions = confirmClearSessions;
+window.confirmRemoveStudents = confirmRemoveStudents;
+window.loadAdminAttendanceRecords = loadAdminAttendanceRecords;
+window.clearAdminAttendanceFilters = clearAdminAttendanceFilters;

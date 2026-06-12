@@ -687,24 +687,11 @@ async function confirmAttendance() {
             throw new Error(`You are ${distanceInMeters}m away. Max allowed: 1000m`);
         }
         
-        const response = await fetch(`${API.baseURL}/student/mark-attendance-without-selfie`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({
-                sessionId: currentScanData.sessionId,
-                location: window.currentLocation,
-                distance: distanceInMeters
-            })
-        });
-        
-        const result = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(result.message || 'Failed to mark attendance');
-        }
+        const result = await API.student.markAttendance(
+            currentScanData.sessionId,
+            window.currentLocation,
+            distanceInMeters
+        );
         
         showToast('✅ Attendance marked successfully!', 'success');
         
