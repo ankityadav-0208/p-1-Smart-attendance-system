@@ -87,33 +87,8 @@
                     </div>
                 </div>
 
-                <!-- My Subjects Overview -->
-                <div class="glass-effect" style="padding: 20px; margin-top: 25px; margin-bottom: 25px;">
-                    <h3 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-book-open" style="color: var(--primary);"></i> My Subjects Overview
-                    </h3>
-                    <div class="table-container" style="margin-top: 0;">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Subject Code</th>
-                                    <th>Subject Name</th>
-                                    <th>Class (Semester)</th>
-                                    <th>Section</th>
-                                    <th>Total Students</th>
-                                    <th>Today's Attendance</th>
-                                    <th>Average Attendance</th>
-                                </tr>
-                            </thead>
-                            <tbody id="mySubjectsOverviewBody">
-                                <tr><td colspan="7" style="text-align: center; color: var(--text-secondary);">Loading subjects overview...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
                 <!-- QR Code Section -->
-                <div class="qr-section glass-effect">
+                <div class="qr-section glass-effect" style="margin-top: 25px; margin-bottom: 25px;">
                     <h3>Start Attendance Session</h3>
                     
                     <!-- ✅ ADD SUBJECT SELECTION DROPDOWN -->
@@ -139,6 +114,31 @@
                         <p class="qr-info">Session ID: <span id="sessionId"></span></p>
                         <p class="qr-info">Subject: <span id="sessionSubjectName"></span></p>
                         <p class="qr-info">Students marked: <span id="markedCount">0</span></p>
+                    </div>
+                </div>
+
+                <!-- My Subjects Overview -->
+                <div class="glass-effect" style="padding: 20px; margin-top: 25px; margin-bottom: 25px;">
+                    <h3 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-book-open" style="color: var(--primary);"></i> My Subjects Overview
+                    </h3>
+                    <div class="table-container" style="margin-top: 0;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Subject Code</th>
+                                    <th>Subject Name</th>
+                                    <th>Class (Semester)</th>
+                                    <th>Section</th>
+                                    <th>Total Students</th>
+                                    <th>Today's Attendance</th>
+                                    <th>Average Attendance</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mySubjectsOverviewBody">
+                                <tr><td colspan="7" style="text-align: center; color: var(--text-secondary);">Loading subjects overview...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 

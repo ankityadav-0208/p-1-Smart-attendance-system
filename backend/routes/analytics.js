@@ -29,15 +29,16 @@ router.get('/subject-attendance', authorize('teacher', 'admin'), async (req, res
             
             const totalSessions = sessions.length;
             
-            const students = await User.find({ role: 'student' });
+            // Find students registered in this section
+            const students = await User.find({ role: 'student', section: subject.section });
+            const studentIds = students.map(s => s._id);
             
             let totalPresent = 0;
-            for (const student of students) {
-                const records = await AttendanceRecord.countDocuments({
-                    studentId: student._id,
+            if (students.length > 0) {
+                totalPresent = await AttendanceRecord.countDocuments({
+                    studentId: { $in: studentIds },
                     subjectId: subject._id
                 });
-                totalPresent += records;
             }
             
             const averageAttendance = students.length > 0 && totalSessions > 0

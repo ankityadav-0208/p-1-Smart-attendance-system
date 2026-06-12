@@ -26,8 +26,12 @@ router.get('/dashboard-overview', async (req, res) => {
         const data = [];
         
         for (const subject of subjects) {
+            // Find all students registered in this section
+            const sectionStudents = await User.find({ role: 'student', section: subject.section }).select('_id');
+            const studentIds = sectionStudents.map(s => s._id);
+
             // 1. Total Students in the subject's section
-            const totalStudents = await User.countDocuments({ role: 'student', section: subject.section });
+            const totalStudents = studentIds.length;
             
             // 2. Today's Attendance Session (check if active or finished today)
             const todaySession = await AttendanceSession.findOne({
@@ -38,7 +42,10 @@ router.get('/dashboard-overview', async (req, res) => {
             let todayPresentCount = 0;
             let todayPercentage = 0;
             if (todaySession) {
-                todayPresentCount = await AttendanceRecord.countDocuments({ sessionId: todaySession._id });
+                todayPresentCount = await AttendanceRecord.countDocuments({ 
+                    sessionId: todaySession._id,
+                    studentId: { $in: studentIds }
+                });
                 todayPercentage = totalStudents > 0 ? parseFloat(((todayPresentCount / totalStudents) * 100).toFixed(1)) : 0;
             }
             
@@ -51,7 +58,10 @@ router.get('/dashboard-overview', async (req, res) => {
             let avgPercentage = 0;
             if (completedSessions.length > 0) {
                 const completedSessionIds = completedSessions.map(s => s._id);
-                const totalCheckins = await AttendanceRecord.countDocuments({ sessionId: { $in: completedSessionIds } });
+                const totalCheckins = await AttendanceRecord.countDocuments({ 
+                    sessionId: { $in: completedSessionIds },
+                    studentId: { $in: studentIds }
+                });
                 avgPercentage = totalStudents > 0 
                     ? parseFloat(((totalCheckins / (totalStudents * completedSessions.length)) * 100).toFixed(1)) 
                     : 0;
